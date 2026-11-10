@@ -1,26 +1,304 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Capsule design tokens: the Stone palette (design-decisions.md section 11).
+ * Values match docs/prototype.html exactly. Color only carries meaning:
+ * statuses and component labels. Everything else is a warm neutral.
+ *
+ * `.light` and `.dark` can also be put on any element to preview a mode
+ * inside the other (the Design tokens page uses this).
+ */
+
+:root,
+.light {
+  color-scheme: light;
+
+  /* Neutrals */
+  --bg: #faf9f7;
+  --surface: #ffffff;
+  --raised: #fcfbfa;
+  --subtle: #f1eeeb;
+  --hover: #fbfaf9;
+  --navhover: #efebe7;
+  --border: #e6e1de;
+  --border-strong: #d2cbc6;
+  --divider: #f1eeeb;
+  --primary: #dcd6d2;
+  --primary-hover: #cfc8c3;
+  --control: #8b837e;
+  --text: #2a2523;
+  --muted: #5f5854;
+  --faint: #78706b;
+  --dash: #c9c1bb;
+  --disabled-bg: #f1eeeb;
+  --disabled-fg: #8b837e;
+  --avatar: #ebe7e4;
+  --avatar-me: #e3ddd8;
+  --focus: #2a2523;
+  --scrim: rgba(42, 37, 35, 0.2);
+
+  /* Progress bars */
+  --p-done: #3e9b5f;
+  --p-prog: #4f7bd9;
+  --p-rev: #d9a23a;
+  --p-empty: #e6e1de;
+
+  /* Surfaces that differ between modes */
+  --pop-bg: var(--surface);
+  --nav-on-bg: var(--surface);
+  --nav-on-shadow: 0 1px 2px rgba(42, 37, 35, 0.06);
+  --seg-on-bg: var(--surface);
+  --seg-on-shadow: 0 1px 2px rgba(42, 37, 35, 0.1);
+
+  /* Shadows */
+  --sh-card: 0 1px 2px rgba(42, 37, 35, 0.04), 0 4px 16px rgba(42, 37, 35, 0.05);
+  --sh-pop: 0 1px 2px rgba(42, 37, 35, 0.06), 0 8px 24px rgba(42, 37, 35, 0.1);
+  --sh-composer: 0 1px 2px rgba(42, 37, 35, 0.05), 0 8px 28px rgba(42, 37, 35, 0.08);
+  --sh-drawer: 0 16px 48px rgba(42, 37, 35, 0.18);
+
+  /* The 10 component colors (background / text). Statuses reuse five of them. */
+  --blue-bg: #dbeafe;
+  --blue-fg: #1e40af;
+  --teal-bg: #ccfbf1;
+  --teal-fg: #115e59;
+  --green-bg: #dcfce7;
+  --green-fg: #166534;
+  --olive-bg: #ecf0d4;
+  --olive-fg: #4d5b1f;
+  --amber-bg: #fef3c7;
+  --amber-fg: #92400e;
+  --orange-bg: #ffedd5;
+  --orange-fg: #9a3412;
+  --red-bg: #fee2e2;
+  --red-fg: #991b1b;
+  --pink-bg: #fce7f3;
+  --pink-fg: #9d174d;
+  --purple-bg: #ede9fe;
+  --purple-fg: #5b21b6;
+  --gray-bg: #eeeae6;
+  --gray-fg: #4a443f;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.dark {
+  color-scheme: dark;
+
+  --bg: #171513;
+  --surface: #1f1c1a;
+  --raised: #221f1d;
+  --subtle: #2a2623;
+  --hover: #24211f;
+  --navhover: #2a2623;
+  --border: #3a3532;
+  --border-strong: #4a4340;
+  --divider: #2a2623;
+  --primary: #3f3936;
+  --primary-hover: #4a4340;
+  --control: #8b837e;
+  --text: #f1ece8;
+  --muted: #b3aba4;
+  --faint: #8f8781;
+  --dash: #5a534f;
+  --disabled-bg: #2a2623;
+  --disabled-fg: #8f8781;
+  --avatar: #3a3532;
+  --avatar-me: #4a4340;
+  --focus: #f1ece8;
+  --scrim: rgba(0, 0, 0, 0.45);
+
+  --p-done: #4fb574;
+  --p-prog: #6e95e8;
+  --p-rev: #e0b050;
+  --p-empty: #3a3532;
+
+  --pop-bg: var(--raised);
+  --nav-on-bg: var(--raised);
+  --nav-on-shadow: inset 0 0 0 1px var(--border);
+  --seg-on-bg: var(--primary);
+  --seg-on-shadow: none;
+
+  --sh-card: none;
+  --sh-pop: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --sh-composer: none;
+  --sh-drawer: 0 16px 48px rgba(0, 0, 0, 0.5);
+
+  --blue-bg: #1e2a4a;
+  --blue-fg: #93c5fd;
+  --teal-bg: #12312e;
+  --teal-fg: #5eead4;
+  --green-bg: #13301f;
+  --green-fg: #86efac;
+  --olive-bg: #2a2f18;
+  --olive-fg: #c5d38a;
+  --amber-bg: #3a2a10;
+  --amber-fg: #fcd34d;
+  --orange-bg: #3b2112;
+  --orange-fg: #fdba74;
+  --red-bg: #3b1616;
+  --red-fg: #fca5a5;
+  --pink-bg: #3a1628;
+  --pink-fg: #f9a8d4;
+  --purple-bg: #261c42;
+  --purple-fg: #c4b5fd;
+  --gray-bg: #2a2725;
+  --gray-fg: #d6d0ca;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Sidebar rail: icon-only. Applies inside the docked sidebar (.sb-auto) on
+ * laptop widths, and on wide widths when the person has collapsed it.
+ */
+@custom-variant rail {
+  @media (min-width: 900px) and (max-width: 1279.98px) {
+    &:where(.sb-auto, .sb-auto *) {
+      @slot;
+    }
+  }
+  @media (min-width: 1280px) {
+    &:where([data-nav="collapsed"] .sb-auto, [data-nav="collapsed"] .sb-auto *) {
+      @slot;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@theme inline {
+  /* Only Capsule's own colors exist, so nothing off-palette slips in. */
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Neutrals */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-subtle: var(--subtle);
+  --color-hover: var(--hover);
+  --color-navhover: var(--navhover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-divider: var(--divider);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-control: var(--control);
+  --color-foreground: var(--text);
+  --color-muted-foreground: var(--muted);
+  --color-faint: var(--faint);
+  --color-dash: var(--dash);
+  --color-disabled: var(--disabled-bg);
+  --color-disabled-foreground: var(--disabled-fg);
+  --color-avatar: var(--avatar);
+  --color-avatar-me: var(--avatar-me);
+  --color-pop: var(--pop-bg);
+  --color-nav-on: var(--nav-on-bg);
+  --color-seg-on: var(--seg-on-bg);
+  --color-focus: var(--focus);
+  --color-scrim: var(--scrim);
+
+  /* Progress */
+  --color-p-done: var(--p-done);
+  --color-p-prog: var(--p-prog);
+  --color-p-rev: var(--p-rev);
+  --color-p-empty: var(--p-empty);
+
+  /* shadcn/ui names, mapped onto Stone so added components match */
+  --color-background: var(--bg);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--pop-bg);
+  --color-popover-foreground: var(--text);
+  --color-primary-foreground: var(--text);
+  --color-secondary: var(--subtle);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--subtle);
+  --color-accent: var(--subtle);
+  --color-accent-foreground: var(--text);
+  --color-destructive: var(--red-fg);
+  --color-input: var(--border);
+  --color-ring: var(--focus);
+
+  /* Component colors: bg-c-blue text-c-blue-fg, and a dot tone */
+  --color-c-blue: var(--blue-bg);
+  --color-c-blue-fg: var(--blue-fg);
+  --color-c-blue-dot: color-mix(in srgb, var(--blue-bg), var(--blue-fg) 28%);
+  --color-c-teal: var(--teal-bg);
+  --color-c-teal-fg: var(--teal-fg);
+  --color-c-teal-dot: color-mix(in srgb, var(--teal-bg), var(--teal-fg) 28%);
+  --color-c-green: var(--green-bg);
+  --color-c-green-fg: var(--green-fg);
+  --color-c-green-dot: color-mix(in srgb, var(--green-bg), var(--green-fg) 28%);
+  --color-c-olive: var(--olive-bg);
+  --color-c-olive-fg: var(--olive-fg);
+  --color-c-olive-dot: color-mix(in srgb, var(--olive-bg), var(--olive-fg) 28%);
+  --color-c-amber: var(--amber-bg);
+  --color-c-amber-fg: var(--amber-fg);
+  --color-c-amber-dot: color-mix(in srgb, var(--amber-bg), var(--amber-fg) 28%);
+  --color-c-orange: var(--orange-bg);
+  --color-c-orange-fg: var(--orange-fg);
+  --color-c-orange-dot: color-mix(in srgb, var(--orange-bg), var(--orange-fg) 28%);
+  --color-c-red: var(--red-bg);
+  --color-c-red-fg: var(--red-fg);
+  --color-c-red-dot: color-mix(in srgb, var(--red-bg), var(--red-fg) 28%);
+  --color-c-pink: var(--pink-bg);
+  --color-c-pink-fg: var(--pink-fg);
+  --color-c-pink-dot: color-mix(in srgb, var(--pink-bg), var(--pink-fg) 28%);
+  --color-c-purple: var(--purple-bg);
+  --color-c-purple-fg: var(--purple-fg);
+  --color-c-purple-dot: color-mix(in srgb, var(--purple-bg), var(--purple-fg) 28%);
+  --color-c-gray: var(--gray-bg);
+  --color-c-gray-fg: var(--gray-fg);
+  --color-c-gray-dot: color-mix(in srgb, var(--gray-bg), var(--gray-fg) 28%);
+
+  /* Type: Geist and Geist Mono */
+  --font-sans: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Shadows */
+  --shadow-card: var(--sh-card);
+  --shadow-pop: var(--sh-pop);
+  --shadow-composer: var(--sh-composer);
+  --shadow-drawer: var(--sh-drawer);
+  --shadow-nav-on: var(--nav-on-shadow);
+  --shadow-seg-on: var(--seg-on-shadow);
+
+  /* Motion */
+  --ease-capsule: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Layout breakpoints from the responsive sidebar decision */
+  --breakpoint-laptop: 900px;
+  --breakpoint-wide: 1280px;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+  html,
+  body {
+    background: var(--bg);
+  }
+  body {
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 20px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  ::placeholder {
+    color: var(--faint);
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
 }
