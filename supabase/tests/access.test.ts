@@ -7,6 +7,7 @@ import {
   COMP,
   EVENT,
   FILE_PATH,
+  INVITATION,
   ITEM,
   MENTION,
   NAMES,
@@ -949,6 +950,150 @@ const groups: Group[] = [
         run: write(
           `insert into storage.objects (bucket_id, name) values ('attachments', 'loose/notes.pdf')`,
         ),
+      },
+    ],
+  },
+  {
+    title: "Setting up an org and invitations",
+    cases: [
+      {
+        who: "nina",
+        tries: "create an org (on the approved list), becoming its admin with 4 default components",
+        expect: "allowed",
+        run: async (db) => {
+          const org = await value<string>(db, `select public.create_org('NewCo', 'Nina Park')`);
+          const role = await value<string>(
+            db,
+            `select role from public.org_members where org_id = $1 and user_id = $2`,
+            [org, P.nina],
+          );
+          const comps = await value<string>(
+            db,
+            `select string_agg(name, ', ' order by position) from public.component_types where org_id = $1`,
+            [org],
+          );
+          const name = await value<string>(db, `select name from public.users where id = $1`, [
+            P.nina,
+          ]);
+          return check(
+            role === "admin" &&
+              comps === "Tech, Operations, Sales, Marketing" &&
+              name === "Nina Park",
+            `role ${role}; components ${comps}; name ${name}`,
+          );
+        },
+      },
+      {
+        who: "sam",
+        tries: "create an org without being approved",
+        expect: "blocked",
+        run: write(`select public.create_org('Sneaky Inc', 'Sam')`),
+      },
+      {
+        who: "christina",
+        tries: "create a second org while already in one",
+        expect: "blocked",
+        run: write(`select public.create_org('Side project', 'Christina')`),
+      },
+      {
+        who: "sam",
+        tries: "be told Capsule is invite-only",
+        expect: "allowed",
+        run: async (db) => {
+          const s = await value<string>(db, `select public.signup_status()`);
+          return check(s === "not_approved", `status ${s}`);
+        },
+      },
+      {
+        who: "ivy",
+        tries: "be recognized as invited, and see her own invitation",
+        expect: "allowed",
+        run: async (db) => {
+          const s = await value<string>(db, `select public.signup_status()`);
+          const n = await value<number>(db, `select count(*)::int from public.invitations`);
+          return check(s === "invited" && n === 1, `status ${s}; sees ${n} invitation(s)`);
+        },
+      },
+      {
+        who: "ivy",
+        tries: "add herself to Acme without accepting an invitation",
+        expect: "blocked",
+        run: write(`insert into public.org_members (org_id, user_id) values ($1, $2)`, [
+          ORG.acme,
+          P.ivy,
+        ]),
+      },
+      {
+        who: "sam",
+        tries: "read the approved sign-up list",
+        expect: "blocked",
+        run: read(`select 1 from public.signup_approvals`),
+      },
+      {
+        who: "christina",
+        tries: "read the approved sign-up list through the app (dashboard only)",
+        expect: "blocked",
+        run: read(`select 1 from public.signup_approvals`),
+      },
+      {
+        who: "christina",
+        tries: "invite a teammate (org admin)",
+        expect: "allowed",
+        run: write(
+          `insert into public.invitations (org_id, email, invited_by) values ($1, 'new@acme.test', $2)`,
+          [ORG.acme, P.christina],
+        ),
+      },
+      {
+        who: "bob",
+        tries: "invite someone (not an admin)",
+        expect: "blocked",
+        run: write(
+          `insert into public.invitations (org_id, email, invited_by) values ($1, 'friend@acme.test', $2)`,
+          [ORG.acme, P.bob],
+        ),
+      },
+      {
+        who: "christina",
+        tries: "invite the same person twice",
+        expect: "blocked",
+        run: write(
+          `insert into public.invitations (org_id, email, invited_by) values ($1, 'ivy@acme.test', $2)`,
+          [ORG.acme, P.christina],
+        ),
+      },
+      {
+        who: "christina",
+        tries: "remove an invitation that hasn't been sent",
+        expect: "allowed",
+        run: write(`delete from public.invitations where id = $1`, [INVITATION.bobDraft]),
+      },
+      {
+        who: "bob",
+        tries: "see who has been invited to his org",
+        expect: "blocked",
+        run: read(`select 1 from public.invitations where id = $1`, [INVITATION.ivyToAcme]),
+      },
+      {
+        who: "olga",
+        tries: "see another org's invitations",
+        expect: "blocked",
+        run: read(`select 1 from public.invitations where org_id = $1`, [ORG.acme]),
+      },
+      {
+        who: "christina",
+        tries: "mark onboarding finished for her org (org admin)",
+        expect: "allowed",
+        run: write(
+          `update public.orgs set onboarded_at = now(), onboarding_step = 5 where id = $1`,
+          [ORG.acme],
+        ),
+      },
+      {
+        who: "bob",
+        tries: "change his org's onboarding progress",
+        expect: "blocked",
+        run: write(`update public.orgs set onboarded_at = now() where id = $1`, [ORG.acme]),
       },
     ],
   },

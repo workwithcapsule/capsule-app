@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { CaretUpDown, GearSix, Monitor, Moon, Sun } from "@phosphor-icons/react";
+import { CaretUpDown, GearSix, Monitor, Moon, SignOut, Sun } from "@phosphor-icons/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { SAMPLE_USER } from "@/lib/sample-data";
+import type { ShellData } from "@/lib/shell-data";
 
 const THEMES = [
   { value: "light", label: "Light", Icon: Sun },
@@ -19,25 +20,33 @@ const THEMES = [
 ] as const;
 
 /** The profile button at the foot of the sidebar, with Settings and Appearance. */
-export function ProfileMenu({ onNavigate }: { onNavigate?: () => void }) {
+export function ProfileMenu({
+  onNavigate,
+  user,
+  orgName,
+}: {
+  onNavigate?: () => void;
+  user: ShellData["user"];
+  orgName: string;
+}) {
   const { theme, setTheme } = useTheme();
 
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
-        title={SAMPLE_USER.name}
+        title={user.name}
         className="flex h-11 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-sm font-medium text-foreground outline-offset-2 hover:bg-navhover data-[state=open]:bg-navhover rail:mx-auto rail:w-11 rail:justify-center rail:px-0"
       >
         <span
           aria-hidden="true"
           className="inline-flex size-7 flex-none items-center justify-center rounded-full bg-avatar-me text-xs font-semibold text-foreground"
         >
-          {SAMPLE_USER.initials}
+          {user.initials}
         </span>
         <span className="flex min-w-0 flex-1 flex-col rail:hidden">
-          <span className="truncate">{SAMPLE_USER.name}</span>
+          <span className="truncate">{user.name}</span>
           <span className="truncate text-xs leading-4 font-normal text-muted-foreground">
-            {SAMPLE_USER.orgName}
+            {orgName}
           </span>
         </span>
         <CaretUpDown size={14} className="flex-none text-faint rail:hidden" />
@@ -84,6 +93,19 @@ export function ProfileMenu({ onNavigate }: { onNavigate?: () => void }) {
             ))}
           </span>
         </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={() => {
+            const form = document.createElement("form");
+            form.method = "post";
+            form.action = "/auth/signout";
+            document.body.appendChild(form);
+            form.submit();
+          }}
+        >
+          <SignOut size={16} />
+          Sign out
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

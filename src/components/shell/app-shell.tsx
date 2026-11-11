@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { SidebarContent, TopBar } from "@/components/shell/sidebar-content";
 import { LAPTOP_UP, WIDE, useMediaQuery } from "@/hooks/use-media-query";
+import type { ShellData } from "@/lib/shell-data";
 
 /*
  * The responsive sidebar (design-decisions.md section 14):
@@ -21,7 +22,7 @@ import { LAPTOP_UP, WIDE, useMediaQuery } from "@/hooks/use-media-query";
 
 const NAV_KEY = "capsule-nav";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, data }: { children: React.ReactNode; data: ShellData }) {
   const wide = useMediaQuery(WIDE);
   const laptopUp = useMediaQuery(LAPTOP_UP);
   const [overlayOpen, setOverlayOpen] = useState(false);
@@ -80,6 +81,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           toggleLabel={railShowing ? "Expand menu" : "Collapse menu"}
           toggleExpanded={!railShowing}
           onToggle={onDockedToggle}
+          data={data}
         />
       </aside>
 
@@ -101,6 +103,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onToggle={closeOverlay}
             onNavigate={closeOverlay}
             narrow={!laptopUp}
+            data={data}
           />
         </SheetContent>
       </Sheet>

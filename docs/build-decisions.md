@@ -31,3 +31,9 @@ Answers Christina gave before the build started. These sit alongside `v1-scope.m
 14. **Attachment file size limit:** 25 MB per file.
 15. **Supabase region:** US East.
 16. **Capsule date type:** "Launch date" or "Due date" (`date_type` is `launch` or `due`).
+
+## Step 3 answers (Nov. 11 2026)
+
+17. **Who can create an org during the beta:** only emails on the approved list (`signup_approvals`, managed in the Supabase dashboard). Everyone else sees "Capsule is invite-only for now" with a link to the waitlist, unless they've been invited.
+18. **Step 3 is built in two parts:** 3a (sign-in, first-person onboarding, welcome) and 3b (invite emails and the invited person's flow).
+19. **Sign-in:** email link only, no passwords and no 6-digit code.

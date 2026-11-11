@@ -10,6 +10,10 @@
  *   Maya       member, not involved in anything
  * Beta Corp (a different org):
  *   Olga       org admin of Beta, owns capsule BE-1
+ * Not in any org yet:
+ *   Nina       approved to create an org (beta sign-up list)
+ *   Sam        not approved, not invited
+ *   Ivy        invited to Acme by Christina
  */
 
 const id = (n: number) => `00000000-0000-4000-8000-${n.toString(16).padStart(12, "0")}`;
@@ -22,6 +26,9 @@ export const P = {
   bob: id(0x105),
   maya: id(0x106),
   olga: id(0x201),
+  nina: id(0x301),
+  sam: id(0x302),
+  ivy: id(0x303),
 } as const;
 
 export type Persona = keyof typeof P;
@@ -34,7 +41,25 @@ export const NAMES: Record<Persona, string> = {
   bob: "Bob (follower)",
   maya: "Maya (member, not involved)",
   olga: "Olga (another org)",
+  nina: "Nina (approved, no org yet)",
+  sam: "Sam (not approved, no org)",
+  ivy: "Ivy (invited to Acme)",
 };
+
+export const EMAIL: Record<Persona, string> = {
+  christina: "christina@acme.test",
+  alex: "alex@acme.test",
+  dana: "dana@acme.test",
+  jon: "jon@acme.test",
+  bob: "bob@acme.test",
+  maya: "maya@acme.test",
+  olga: "olga@beta.test",
+  nina: "nina@newco.test",
+  sam: "sam@newco.test",
+  ivy: "ivy@acme.test",
+};
+
+export const INVITATION = { ivyToAcme: id(0xb001), bobDraft: id(0xb002) };
 
 export const ORG = { acme: id(0x1001), beta: id(0x1002) };
 
@@ -85,11 +110,16 @@ insert into auth.users (id, email, raw_user_meta_data, aud, role) values
   ('${P.jon}', 'jon@acme.test', '{"name":"Jon"}', 'authenticated', 'authenticated'),
   ('${P.bob}', 'bob@acme.test', '{"name":"Bob"}', 'authenticated', 'authenticated'),
   ('${P.maya}', 'maya@acme.test', '{"name":"Maya"}', 'authenticated', 'authenticated'),
-  ('${P.olga}', 'olga@beta.test', '{"name":"Olga"}', 'authenticated', 'authenticated');
+  ('${P.olga}', 'olga@beta.test', '{"name":"Olga"}', 'authenticated', 'authenticated'),
+  ('${P.nina}', 'nina@newco.test', '{}', 'authenticated', 'authenticated'),
+  ('${P.sam}', 'sam@newco.test', '{}', 'authenticated', 'authenticated'),
+  ('${P.ivy}', 'ivy@acme.test', '{}', 'authenticated', 'authenticated');
 
-insert into public.orgs (id, name, email_domain) values
-  ('${ORG.acme}', 'Acme Partners', 'acme.test'),
-  ('${ORG.beta}', 'Beta Corp', 'beta.test');
+insert into public.signup_approvals (email, note) values ('nina@newco.test', 'Founding Builder');
+
+insert into public.orgs (id, name, email_domain, onboarded_at) values
+  ('${ORG.acme}', 'Acme Partners', 'acme.test', now()),
+  ('${ORG.beta}', 'Beta Corp', 'beta.test', now());
 
 insert into public.org_members (org_id, user_id, role) values
   ('${ORG.acme}', '${P.christina}', 'admin'),
@@ -151,6 +181,10 @@ insert into public.attachments (id, org_id, capsule_id, component_id, kind, name
    'https://www.figma.com/file/abc/leaderboard', 'figma', '${P.dana}'),
   ('${ATTACHMENT.be1Link}', '${ORG.beta}', '${CAPSULE.be1}', null, 'link', 'Beta doc',
    'https://notion.so/beta', 'notion', '${P.olga}');
+
+insert into public.invitations (id, org_id, email, invited_by) values
+  ('${INVITATION.ivyToAcme}', '${ORG.acme}', 'ivy@acme.test', '${P.christina}'),
+  ('${INVITATION.bobDraft}', '${ORG.acme}', 'someone@acme.test', '${P.christina}');
 
 insert into storage.objects (bucket_id, name) values
   ('attachments', '${FILE_PATH.en1}'),
