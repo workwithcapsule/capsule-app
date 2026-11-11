@@ -1097,6 +1097,154 @@ const groups: Group[] = [
       },
     ],
   },
+  {
+    title: "Joining by invitation",
+    cases: [
+      {
+        who: "ivy",
+        tries: "see who invited her, to which org, and its components",
+        expect: "allowed",
+        run: async (db) => {
+          const inv = await value<{ org_name: string; invited_by: string; components: unknown[] }>(
+            db,
+            `select public.my_invitation()`,
+          );
+          return check(
+            inv?.org_name === "Acme Partners" &&
+              inv.invited_by === "Christina" &&
+              inv.components.length === 4,
+            JSON.stringify(inv),
+          );
+        },
+      },
+      {
+        who: "sam",
+        tries: "read an invitation that isn't his",
+        expect: "blocked",
+        run: async (db) => {
+          const inv = await value<unknown>(db, `select public.my_invitation()`);
+          return check(inv != null, `got ${JSON.stringify(inv)}`);
+        },
+      },
+      {
+        who: "ivy",
+        tries: "accept her invitation, joining Acme as a member with her usual areas",
+        expect: "allowed",
+        run: async (db) => {
+          // One Acme area and one from another org: only Acme's is kept.
+          await value(db, `select public.accept_invitation('Ivy Chen', array[$1, $2]::uuid[])`, [
+            TYPE.ops,
+            TYPE.betaTech,
+          ]);
+          const role = await value<string>(
+            db,
+            `select role from public.org_members where org_id = $1 and user_id = $2`,
+            [ORG.acme, P.ivy],
+          );
+          const areas = await value<string[]>(
+            db,
+            `select usual_component_type_ids from public.org_members where org_id = $1 and user_id = $2`,
+            [ORG.acme, P.ivy],
+          );
+          const status = await value<string>(db, `select public.signup_status()`);
+          const accepted = await value<boolean>(
+            db,
+            `select accepted_at is not null from public.invitations where id = $1`,
+            [INVITATION.ivyToAcme],
+          );
+          return check(
+            role === "member" &&
+              areas?.length === 1 &&
+              areas[0] === TYPE.ops &&
+              status === "joining" &&
+              accepted === true,
+            `role ${role}; areas ${JSON.stringify(areas)}; status ${status}; accepted ${accepted}`,
+          );
+        },
+      },
+      {
+        who: "ivy",
+        tries: "finish joining, then see Acme's capsules",
+        expect: "allowed",
+        run: async (db) => {
+          await value(db, `select public.accept_invitation('Ivy', '{}')`);
+          await attempt(
+            db,
+            `update public.org_members set onboarded_at = now() where org_id = $1 and user_id = $2`,
+            [ORG.acme, P.ivy],
+          );
+          const status = await value<string>(db, `select public.signup_status()`);
+          const sees = await attempt(db, `select 1 from public.capsules where id = $1`, [
+            CAPSULE.en1,
+          ]);
+          return check(status === "member" && sees.allowed, `status ${status}; ${sees.detail}`);
+        },
+      },
+      {
+        who: "ivy",
+        tries: "accept her invitation twice",
+        expect: "blocked",
+        run: async (db) => {
+          await value(db, `select public.accept_invitation('Ivy', '{}')`);
+          return write(`select public.accept_invitation('Ivy', '{}')`)(db);
+        },
+      },
+      {
+        who: "sam",
+        tries: "accept an invitation that isn't his",
+        expect: "blocked",
+        run: write(`select public.accept_invitation('Sam', '{}')`),
+      },
+      {
+        who: "christina",
+        tries: "mark Dana's setup as finished for her",
+        expect: "blocked",
+        run: write(
+          `update public.org_members set onboarded_at = null where org_id = $1 and user_id = $2`,
+          [ORG.acme, P.dana],
+        ),
+      },
+      {
+        who: "christina",
+        tries: "record that Ivy's invitation email was sent (org admin)",
+        expect: "allowed",
+        run: async (db) => {
+          const n = await value<number>(
+            db,
+            `select public.mark_invitations_sent(array[$1]::uuid[])`,
+            [INVITATION.ivyToAcme],
+          );
+          return check(n === 1, `${n} marked`);
+        },
+      },
+      {
+        who: "bob",
+        tries: "record an invitation as sent (not an admin)",
+        expect: "blocked",
+        run: async (db) => {
+          const n = await value<number>(
+            db,
+            `select public.mark_invitations_sent(array[$1]::uuid[])`,
+            [INVITATION.ivyToAcme],
+          );
+          return check(n === 1, `${n} marked`);
+        },
+      },
+      {
+        who: "olga",
+        tries: "record another org's invitation as sent",
+        expect: "blocked",
+        run: async (db) => {
+          const n = await value<number>(
+            db,
+            `select public.mark_invitations_sent(array[$1]::uuid[])`,
+            [INVITATION.ivyToAcme],
+          );
+          return check(n === 1, `${n} marked`);
+        },
+      },
+    ],
+  },
 ];
 
 const results: { group: string; who: string; tries: string; expect: Expect; got: Expect }[] = [];

@@ -160,7 +160,12 @@ export function SidebarContent({
       </div>
 
       <div className="relative mt-auto border-t border-divider pt-3">
-        <ProfileMenu onNavigate={onNavigate} user={data.user} orgName={data.org.name} />
+        <ProfileMenu
+          onNavigate={onNavigate}
+          user={data.user}
+          orgName={data.org.name}
+          isAdmin={data.org.isAdmin}
+        />
       </div>
     </div>
   );
