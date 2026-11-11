@@ -30,3 +30,4 @@ Answers Christina gave before the build started. These sit alongside `v1-scope.m
 
 14. **Attachment file size limit:** 25 MB per file.
 15. **Supabase region:** US East.
+16. **Capsule date type:** "Launch date" or "Due date" (`date_type` is `launch` or `due`).
