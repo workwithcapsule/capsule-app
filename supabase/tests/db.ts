@@ -1,5 +1,5 @@
 import pg from "pg";
-import { P, type Persona } from "./fixtures";
+import { EMAIL, P, type Persona } from "./fixtures";
 
 /**
  * Test helpers. Each check runs inside a transaction that is always rolled
@@ -29,7 +29,12 @@ export async function as<T>(who: Persona | "signed out", fn: (db: Db) => Promise
       await db.query("set local role anon");
     } else {
       await db.query("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify({ sub: P[who], role: "authenticated", aud: "authenticated" }),
+        JSON.stringify({
+          sub: P[who],
+          email: EMAIL[who],
+          role: "authenticated",
+          aud: "authenticated",
+        }),
       ]);
       await db.query("set local role authenticated");
     }

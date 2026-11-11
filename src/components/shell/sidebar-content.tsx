@@ -14,7 +14,9 @@ import {
 import { CapsuleIcon } from "@/components/icons";
 import { ProfileMenu } from "@/components/shell/profile-menu";
 import { cn } from "@/lib/utils";
-import { SAMPLE_ATTENTION_COUNT, SAMPLE_SPACES, spaceHref } from "@/lib/sample-data";
+import type { ShellData } from "@/lib/shell-data";
+
+const spaceHref = (key: string) => `/spaces/${key.toLowerCase()}`;
 
 /**
  * Everything inside the sidebar. Rendered twice by AppShell: once docked
@@ -32,6 +34,7 @@ type Props = {
   onNavigate?: () => void;
   /** Narrow widths show an X to close the overlay instead of the sidebar icon. */
   narrow?: boolean;
+  data: ShellData;
 };
 
 const navLink =
@@ -47,6 +50,7 @@ export function SidebarContent({
   onToggle,
   onNavigate,
   narrow,
+  data,
 }: Props) {
   const pathname = usePathname();
   const isOn = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
@@ -113,14 +117,6 @@ export function SidebarContent({
         >
           <House size={16} className="flex-none" />
           <span className={label}>Home</span>
-          {SAMPLE_ATTENTION_COUNT > 0 && (
-            <span
-              aria-label={`${SAMPLE_ATTENTION_COUNT} need your attention`}
-              className="h-5 min-w-5 rounded-full bg-primary px-1.5 text-center text-[11px] leading-5 font-semibold text-foreground rail:absolute rail:top-0.5 rail:right-0 rail:h-4 rail:min-w-4 rail:px-1 rail:text-[10px] rail:leading-4"
-            >
-              {SAMPLE_ATTENTION_COUNT}
-            </span>
-          )}
         </Link>
         <Link
           href="/capsules"
@@ -138,7 +134,7 @@ export function SidebarContent({
         <h2 className="mb-1 px-2.5 text-xs leading-4 font-medium text-muted-foreground">
           Your spaces
         </h2>
-        {SAMPLE_SPACES.map((s) => {
+        {data.spaces.map((s) => {
           const href = spaceHref(s.key);
           return (
             <Link
@@ -164,7 +160,7 @@ export function SidebarContent({
       </div>
 
       <div className="relative mt-auto border-t border-divider pt-3">
-        <ProfileMenu onNavigate={onNavigate} />
+        <ProfileMenu onNavigate={onNavigate} user={data.user} orgName={data.org.name} />
       </div>
     </div>
   );
