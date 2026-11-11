@@ -818,8 +818,18 @@ create policy "The person who added it, or the capsule owner, removes it" on pub
 -- RLS decides which rows; these grants decide which columns can ever be
 -- changed through the API. Signed-out visitors get nothing.
 
-revoke all on all tables in schema public from anon;
-revoke truncate, references, trigger on all tables in schema public from authenticated;
+-- Listed by name so tables that belong to other apps in this project (such
+-- as the website's waitlist) are left alone.
+revoke all on
+  public.orgs, public.users, public.org_members, public.component_types, public.spaces,
+  public.space_members, public.capsules, public.components, public.component_people,
+  public.work_items, public.followers, public.events, public.mentions, public.attachments
+from anon;
+revoke truncate, references, trigger on
+  public.orgs, public.users, public.org_members, public.component_types, public.spaces,
+  public.space_members, public.capsules, public.components, public.component_people,
+  public.work_items, public.followers, public.events, public.mentions, public.attachments
+from authenticated;
 
 revoke insert, update, delete on public.orgs from authenticated;
 grant update (name, email_domain) on public.orgs to authenticated;
