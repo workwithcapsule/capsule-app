@@ -25,3 +25,8 @@ Answers Christina gave before the build started. These sit alongside `v1-scope.m
 11. **Org admins:** see everything, but edit or comment only where they're on the team.
 12. **Needs your attention:** rows have a plain X with Undo, no reasons.
 13. **Orbit when AI is fast:** the beads finish landing (about 2.75s) before morphing into the review page.
+
+## Step 2 answers (Nov. 11 2026)
+
+14. **Attachment file size limit:** 25 MB per file.
+15. **Supabase region:** US East.
