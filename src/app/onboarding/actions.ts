@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { COMPONENT_COLORS } from "@/lib/design";
 import { isEmail, prefixError } from "@/lib/validation";
 import { ICON_KEYS } from "@/components/component-icon";
+import { sendOpenInvitations } from "@/lib/invitations";
 import { loadOnboarding } from "./data";
 import type { ActionResult, OnboardingComponent, OnboardingSpace } from "./types";
 
@@ -181,5 +182,10 @@ export async function finishOnboarding(orgId: string, invites: string[]): Promis
     .from("orgs")
     .update({ onboarded_at: new Date().toISOString(), onboarding_step: 5 })
     .eq("id", orgId);
-  return error ? fail(SOMETHING_WRONG) : { ok: true };
+  if (error) return fail(SOMETHING_WRONG);
+
+  // Email the invitations. Ones that can't go out yet (test mode) stay on the
+  // Invite teammates page to send later; finishing onboarding never fails on it.
+  await sendOpenInvitations(supabase, orgId).catch(() => undefined);
+  return { ok: true };
 }

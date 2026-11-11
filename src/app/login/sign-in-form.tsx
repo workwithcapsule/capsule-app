@@ -45,7 +45,7 @@ export function SignInForm() {
   }
 
   const error = state.status === "idle" && !retry ? state.error : undefined;
-  const email = state.email;
+  const email = state.email ?? params.get("email") ?? "";
 
   return (
     <form

@@ -121,14 +121,14 @@ insert into public.orgs (id, name, email_domain, onboarded_at) values
   ('${ORG.acme}', 'Acme Partners', 'acme.test', now()),
   ('${ORG.beta}', 'Beta Corp', 'beta.test', now());
 
-insert into public.org_members (org_id, user_id, role) values
-  ('${ORG.acme}', '${P.christina}', 'admin'),
-  ('${ORG.acme}', '${P.alex}', 'admin'),
-  ('${ORG.acme}', '${P.dana}', 'member'),
-  ('${ORG.acme}', '${P.jon}', 'member'),
-  ('${ORG.acme}', '${P.bob}', 'member'),
-  ('${ORG.acme}', '${P.maya}', 'member'),
-  ('${ORG.beta}', '${P.olga}', 'admin');
+insert into public.org_members (org_id, user_id, role, onboarded_at) values
+  ('${ORG.acme}', '${P.christina}', 'admin', now()),
+  ('${ORG.acme}', '${P.alex}', 'admin', now()),
+  ('${ORG.acme}', '${P.dana}', 'member', now()),
+  ('${ORG.acme}', '${P.jon}', 'member', now()),
+  ('${ORG.acme}', '${P.bob}', 'member', now()),
+  ('${ORG.acme}', '${P.maya}', 'member', now()),
+  ('${ORG.beta}', '${P.olga}', 'admin', now());
 
 insert into public.component_types (id, org_id, name, color, position) values
   ('${TYPE.tech}', '${ORG.acme}', 'Tech', 'blue', 0),

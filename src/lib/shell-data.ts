@@ -3,13 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 
 export type ShellData = {
   user: { name: string; initials: string; email: string };
-  org: { name: string };
+  org: { name: string; isAdmin: boolean };
   spaces: { key: string; name: string }[];
 };
 
 export const EMPTY_SHELL: ShellData = {
   user: { name: "", initials: "", email: "" },
-  org: { name: "" },
+  org: { name: "", isAdmin: false },
   spaces: [],
 };
 
@@ -32,7 +32,12 @@ export async function loadShellData(): Promise<ShellData> {
 
   const [{ data: me }, { data: membership }, { data: spaces }] = await Promise.all([
     supabase.from("users").select("name, email").eq("id", userId).single(),
-    supabase.from("org_members").select("orgs(name)").eq("user_id", userId).limit(1).maybeSingle(),
+    supabase
+      .from("org_members")
+      .select("role, orgs(name)")
+      .eq("user_id", userId)
+      .limit(1)
+      .maybeSingle(),
     supabase
       .from("space_members")
       .select("spaces(name, key_prefix)")
@@ -45,7 +50,7 @@ export async function loadShellData(): Promise<ShellData> {
   const org = membership?.orgs as unknown as { name: string } | null;
   return {
     user: { name: name || email, initials: initialsOf(name, email), email },
-    org: { name: org?.name ?? "" },
+    org: { name: org?.name ?? "", isAdmin: membership?.role === "admin" },
     spaces: (spaces ?? [])
       .map((r) => r.spaces as unknown as { name: string; key_prefix: string } | null)
       .filter((s): s is { name: string; key_prefix: string } => Boolean(s))

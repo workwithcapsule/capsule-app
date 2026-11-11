@@ -7,9 +7,10 @@
 export type AccessStatus =
   | "signed_out"
   | "member" // in an org that has finished setting up
+  | "joining" // accepted an invitation, finishing their own first-run flow
   | "setting_up" // in an org still in onboarding
   | "approved" // may create an org
-  | "invited" // has an open invitation (joining arrives in step 3b)
+  | "invited" // has an open invitation they haven't accepted yet
   | "not_approved";
 
 /** Pages anyone can open, signed in or not. */
@@ -24,6 +25,7 @@ export function homeFor(status: Exclude<AccessStatus, "signed_out">): string {
     case "approved":
       return "/onboarding";
     case "invited":
+    case "joining":
       return "/join";
     case "not_approved":
       return "/invite-only";
