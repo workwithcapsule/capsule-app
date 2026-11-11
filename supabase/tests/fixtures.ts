@@ -16,6 +16,16 @@
  *   Ivy        invited to Acme by Christina
  */
 
+import { createHash } from "node:crypto";
+
+/** Invite link codes used in tests, and the fingerprints the database stores. */
+export const LINK = {
+  ivy: "ivy-invite-link-code",
+  expired: "expired-link-code",
+  withdrawn: "withdrawn-link-code",
+};
+export const fingerprint = (code: string) => createHash("sha256").update(code).digest("hex");
+
 const id = (n: number) => `00000000-0000-4000-8000-${n.toString(16).padStart(12, "0")}`;
 
 export const P = {
@@ -59,7 +69,12 @@ export const EMAIL: Record<Persona, string> = {
   ivy: "ivy@acme.test",
 };
 
-export const INVITATION = { ivyToAcme: id(0xb001), bobDraft: id(0xb002) };
+export const INVITATION = {
+  ivyToAcme: id(0xb001),
+  bobDraft: id(0xb002),
+  expired: id(0xb003),
+  withdrawn: id(0xb004),
+};
 
 export const ORG = { acme: id(0x1001), beta: id(0x1002) };
 
@@ -185,6 +200,15 @@ insert into public.attachments (id, org_id, capsule_id, component_id, kind, name
 insert into public.invitations (id, org_id, email, invited_by) values
   ('${INVITATION.ivyToAcme}', '${ORG.acme}', 'ivy@acme.test', '${P.christina}'),
   ('${INVITATION.bobDraft}', '${ORG.acme}', 'someone@acme.test', '${P.christina}');
+
+update public.invitations
+  set sent_at = now(), token_hash = '${fingerprint(LINK.ivy)}', token_expires_at = now() + interval '7 days'
+  where id = '${INVITATION.ivyToAcme}';
+insert into public.invitations (id, org_id, email, invited_by, sent_at, token_hash, token_expires_at, revoked_at) values
+  ('${INVITATION.expired}', '${ORG.acme}', 'late@acme.test', '${P.christina}', now() - interval '9 days',
+   '${fingerprint(LINK.expired)}', now() - interval '2 days', null),
+  ('${INVITATION.withdrawn}', '${ORG.acme}', 'gone@acme.test', '${P.christina}', now() - interval '1 day',
+   '${fingerprint(LINK.withdrawn)}', now() + interval '6 days', now());
 
 insert into storage.objects (bucket_id, name) values
   ('attachments', '${FILE_PATH.en1}'),

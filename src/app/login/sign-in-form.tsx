@@ -8,6 +8,8 @@ import { sendSignInLink, type SignInState } from "./actions";
 
 const LINK_ERRORS: Record<string, string> = {
   link: "That sign-in link has expired or was already used. Enter your email for a new one.",
+  invite:
+    "That invite link has expired or was already used. Sign in with your email instead, or ask for a new invite.",
 };
 
 export function SignInForm() {

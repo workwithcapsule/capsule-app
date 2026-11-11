@@ -32,3 +32,21 @@ describe("validation", () => {
     expect(parseInvites("a@x.com", ["a@x.com"]).error).toBe("a@x.com is already on the list.");
   });
 });
+
+import { fingerprintOf, looksLikeInviteCode, newInviteCode } from "../invite-links";
+
+describe("invite link codes", () => {
+  it("are long, random and URL-safe", () => {
+    const a = newInviteCode();
+    expect(looksLikeInviteCode(a)).toBe(true);
+    expect(newInviteCode()).not.toBe(a);
+  });
+  it("are stored only as a fingerprint", () => {
+    expect(fingerprintOf("abc")).toMatch(/^[0-9a-f]{64}$/);
+    expect(fingerprintOf("abc")).not.toContain("abc");
+  });
+  it("reject anything that isn't a code", () => {
+    expect(looksLikeInviteCode("../../etc")).toBe(false);
+    expect(looksLikeInviteCode("short")).toBe(false);
+  });
+});
