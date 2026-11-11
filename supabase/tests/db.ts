@@ -18,11 +18,19 @@ export type Db = pg.PoolClient;
 /** What happened when a persona tried something. */
 export type Outcome = { allowed: boolean; detail: string };
 
-export async function as<T>(who: Persona | "signed out", fn: (db: Db) => Promise<T>): Promise<T> {
+export type Who = Persona | "signed out" | "server";
+
+export async function as<T>(who: Who, fn: (db: Db) => Promise<T>): Promise<T> {
   const db = await pool.connect();
   try {
     await db.query("begin");
-    if (who === "signed out") {
+    if (who === "server") {
+      // The app's server using its secret key (Supabase's service role).
+      await db.query("select set_config('request.jwt.claims', $1, true)", [
+        JSON.stringify({ role: "service_role" }),
+      ]);
+      await db.query("set local role service_role");
+    } else if (who === "signed out") {
       await db.query("select set_config('request.jwt.claims', $1, true)", [
         JSON.stringify({ role: "anon" }),
       ]);

@@ -39,6 +39,14 @@ export async function sendInvitations(orgId: string): Promise<Result> {
   return { ok: true, summary };
 }
 
+/** Emails one invitation again with a fresh link (the old link stops working). */
+export async function resendInvitation(orgId: string, id: string): Promise<Result> {
+  const supabase = await createClient();
+  const summary = await sendOpenInvitations(supabase, orgId, { only: [id] });
+  revalidatePath("/invite");
+  return { ok: true, summary };
+}
+
 /** Unsent invitations are deleted; sent ones are withdrawn (kept for the record). */
 export async function removeInvitation(id: string, sent: boolean): Promise<Result> {
   const supabase = await createClient();

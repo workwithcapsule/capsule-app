@@ -37,3 +37,8 @@ Answers Christina gave before the build started. These sit alongside `v1-scope.m
 17. **Who can create an org during the beta:** only emails on the approved list (`signup_approvals`, managed in the Supabase dashboard). Everyone else sees "Capsule is invite-only for now" with a link to the waitlist, unless they've been invited.
 18. **Step 3 is built in two parts:** 3a (sign-in, first-person onboarding, welcome) and 3b (invite emails and the invited person's flow).
 19. **Sign-in:** email link only, no passwords and no 6-digit code.
+
+## One-click invites (Nov. 11 2026)
+
+20. **Invite links sign people straight in.** The invite email's link is private and single-use, and signs the invited person in on the spot (creating their account the first time), so there's no second sign-in email. After that they sign in with the usual emailed link. Links last **7 days**, stop working when used, withdrawn or replaced by a resend.
+21. **Invites sent before this change** keep working the old way (sign in, then join). Resend any of them to get a one-click link.

@@ -1,13 +1,15 @@
 import { writeFileSync } from "node:fs";
 import { afterAll, describe, expect, it } from "vitest";
-import { as, attempt, pool, value, type Db, type Outcome } from "./db";
+import { as, attempt, pool, value, type Db, type Outcome, type Who } from "./db";
 import {
   ATTACHMENT,
   CAPSULE,
   COMP,
   EVENT,
   FILE_PATH,
+  fingerprint,
   INVITATION,
+  LINK,
   ITEM,
   MENTION,
   NAMES,
@@ -15,7 +17,6 @@ import {
   P,
   SPACE,
   TYPE,
-  type Persona,
 } from "./fixtures";
 
 /**
@@ -25,7 +26,7 @@ import {
 
 type Expect = "allowed" | "blocked";
 type Case = {
-  who: Persona | "signed out";
+  who: Who;
   tries: string;
   expect: Expect;
   run: (db: Db) => Promise<Outcome>;
@@ -1245,6 +1246,117 @@ const groups: Group[] = [
       },
     ],
   },
+  {
+    title: "One-click invite links",
+    cases: [
+      {
+        who: "server",
+        tries: "open Ivy's invite link, getting her email to sign her in",
+        expect: "allowed",
+        run: async (db) => {
+          const email = await value<string>(db, `select public.redeem_invitation_link($1)`, [
+            fingerprint(LINK.ivy),
+          ]);
+          return check(email === "ivy@acme.test", `got ${email}`);
+        },
+      },
+      {
+        who: "server",
+        tries: "use Ivy's link a second time",
+        expect: "blocked",
+        run: async (db) => {
+          await value(db, `select public.redeem_invitation_link($1)`, [fingerprint(LINK.ivy)]);
+          const again = await value<string>(db, `select public.redeem_invitation_link($1)`, [
+            fingerprint(LINK.ivy),
+          ]);
+          return check(again != null, `got ${again}`);
+        },
+      },
+      {
+        who: "server",
+        tries: "use a link older than 7 days",
+        expect: "blocked",
+        run: async (db) => {
+          const email = await value<string>(db, `select public.redeem_invitation_link($1)`, [
+            fingerprint(LINK.expired),
+          ]);
+          return check(email != null, `got ${email}`);
+        },
+      },
+      {
+        who: "server",
+        tries: "use the link of a withdrawn invitation",
+        expect: "blocked",
+        run: async (db) => {
+          const email = await value<string>(db, `select public.redeem_invitation_link($1)`, [
+            fingerprint(LINK.withdrawn),
+          ]);
+          return check(email != null, `got ${email}`);
+        },
+      },
+      {
+        who: "server",
+        tries: "use a made-up link",
+        expect: "blocked",
+        run: async (db) => {
+          const email = await value<string>(db, `select public.redeem_invitation_link($1)`, [
+            fingerprint("guess"),
+          ]);
+          return check(email != null, `got ${email}`);
+        },
+      },
+      {
+        who: "christina",
+        tries: "resend Ivy's invite, which replaces her old link with a new one",
+        expect: "allowed",
+        run: async (db) => {
+          const ok = await value<boolean>(db, `select public.record_invitation_sent($1, $2)`, [
+            INVITATION.ivyToAcme,
+            fingerprint("new-ivy-link"),
+          ]);
+          // Switch to the server to try both links.
+          await db.query(
+            `select set_config('request.jwt.claims', '{"role":"service_role"}', true)`,
+          );
+          await db.query(`set local role service_role`);
+          const old = await value<string>(db, `select public.redeem_invitation_link($1)`, [
+            fingerprint(LINK.ivy),
+          ]);
+          const fresh = await value<string>(db, `select public.redeem_invitation_link($1)`, [
+            fingerprint("new-ivy-link"),
+          ]);
+          return check(
+            ok === true && old == null && fresh === "ivy@acme.test",
+            `resent ${ok}; old ${old}; new ${fresh}`,
+          );
+        },
+      },
+      {
+        who: "bob",
+        tries: "record a new invite link (not an admin)",
+        expect: "blocked",
+        run: async (db) => {
+          const ok = await value<boolean>(db, `select public.record_invitation_sent($1, $2)`, [
+            INVITATION.ivyToAcme,
+            fingerprint("bob-link"),
+          ]);
+          return check(ok === true, `${ok}`);
+        },
+      },
+      {
+        who: "ivy",
+        tries: "redeem a link herself, without the server",
+        expect: "blocked",
+        run: write(`select public.redeem_invitation_link($1)`, [fingerprint(LINK.ivy)]),
+      },
+      {
+        who: "signed out",
+        tries: "redeem a link without the server",
+        expect: "blocked",
+        run: write(`select public.redeem_invitation_link($1)`, [fingerprint(LINK.ivy)]),
+      },
+    ],
+  },
 ];
 
 const results: { group: string; who: string; tries: string; expect: Expect; got: Expect }[] = [];
@@ -1252,7 +1364,12 @@ const results: { group: string; who: string; tries: string; expect: Expect; got:
 for (const group of groups) {
   describe(group.title, () => {
     for (const c of group.cases) {
-      const who = c.who === "signed out" ? "Signed out" : NAMES[c.who];
+      const who =
+        c.who === "signed out"
+          ? "Signed out"
+          : c.who === "server"
+            ? "The app's server (secret key)"
+            : NAMES[c.who];
       it(`${who} tries to ${c.tries}: ${c.expect}`, async () => {
         const outcome = await as(c.who, c.run);
         const got: Expect = outcome.allowed ? "allowed" : "blocked";

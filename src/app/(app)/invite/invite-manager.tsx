@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input } from "@/components/ui/input";
 import { parseInvites } from "@/lib/validation";
-import { addInvitations, removeInvitation, sendInvitations } from "./actions";
+import { addInvitations, removeInvitation, resendInvitation, sendInvitations } from "./actions";
 
 export type InvitationRow = {
   id: string;
@@ -52,16 +52,20 @@ export function InviteManager({
     });
   }
 
-  function send() {
+  function send(only?: string) {
     setError("");
     setNotice("");
     start(async () => {
-      const r = await sendInvitations(orgId);
+      const r = only ? await resendInvitation(orgId, only) : await sendInvitations(orgId);
       if (!r.ok) return setError(r.error);
       const s = r.summary!;
       const parts = [];
       if (s.sent.length)
-        parts.push(`Sent ${s.sent.length} invite${s.sent.length === 1 ? "" : "s"}.`);
+        parts.push(
+          only
+            ? `Sent a new invite to ${s.sent[0]}. Their old link no longer works.`
+            : `Sent ${s.sent.length} invite${s.sent.length === 1 ? "" : "s"}.`,
+        );
       if (s.held.length)
         parts.push(
           `Not sent yet (${testMode ? "test mode" : "email isn’t set up"}): ${s.held.join(", ")}.`,
@@ -128,18 +132,25 @@ export function InviteManager({
                 <span className="text-xs text-muted-foreground">{status(r)}</span>
               </span>
               {!r.acceptedAt && (
-                <Button
-                  variant="quiet"
-                  disabled={pending}
-                  onClick={() =>
-                    start(async () => {
-                      const res = await removeInvitation(r.id, Boolean(r.sentAt));
-                      if (!res.ok) setError(res.error);
-                    })
-                  }
-                >
-                  {r.sentAt ? "Withdraw" : "Remove"}
-                </Button>
+                <span className="flex flex-none gap-1">
+                  {r.sentAt && (
+                    <Button variant="quiet" disabled={pending} onClick={() => send(r.id)}>
+                      Resend
+                    </Button>
+                  )}
+                  <Button
+                    variant="quiet"
+                    disabled={pending}
+                    onClick={() =>
+                      start(async () => {
+                        const res = await removeInvitation(r.id, Boolean(r.sentAt));
+                        if (!res.ok) setError(res.error);
+                      })
+                    }
+                  >
+                    {r.sentAt ? "Withdraw" : "Remove"}
+                  </Button>
+                </span>
               )}
             </li>
           ))}
@@ -148,7 +159,7 @@ export function InviteManager({
 
       {unsent.length > 0 && (
         <div>
-          <Button variant="primary" size="lg" onClick={send} disabled={pending}>
+          <Button variant="primary" size="lg" onClick={() => send()} disabled={pending}>
             {pending ? "Sending…" : `Send ${unsent.length} invite${unsent.length === 1 ? "" : "s"}`}
           </Button>
         </div>
