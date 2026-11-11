@@ -11,14 +11,15 @@ I'm Christina, the solo founder. I'm a product owner, not an engineer, so read "
 | `v1-scope.md` | What's in V1 and what isn't | **The source of truth for what to build.** If another doc describes a feature that's on the "Later" list here, don't build it. |
 | `design-decisions.md` | Detailed behavior, copy, layout, visual system, permissions | How each V1 feature should behave and look. Follow it exactly unless V1 scope limits it. |
 | `tech-stack.md` | Stack, first-pass schema, early decisions | The architecture to follow, trimmed by the V1 notes below. |
+| `build-decisions.md` | Answers to open questions, given at the start of the build (Nov. 10 2026) | Follow these where the other docs were unclear or contradicted each other. |
 | `prototype.html` | The clickable demo | **Visual and interaction reference only.** Match its look, copy and motion (especially Orbit). Don't copy its code structure or grow it into the app: it's a plain-JavaScript demo on sample data. |
 
-If two docs disagree, `v1-scope.md` wins, then `design-decisions.md`. If something is still unclear, ask me. Don't guess.
+If two docs disagree, `v1-scope.md` wins, then `build-decisions.md`, then `design-decisions.md`. If something is still unclear, ask me. Don't guess.
 
 ## Stack (V1)
 
 - **App:** Next.js (App Router), React, TypeScript, hosted on Vercel at app.workwithcapsule.com
-- **UI:** Tailwind and shadcn/ui (Radix). Use the Stone palette, status pill colors and the 10 component colors from `design-decisions.md` as Tailwind theme variables, with light and dark mode. Type is Geist and Geist Mono. Icons are Phosphor, thin line style.
+- **UI:** Tailwind and shadcn/ui (Radix). Use the Stone palette, status pill colors and the 10 component colors from `design-decisions.md` as Tailwind theme variables, with light and dark mode. Type is Geist and Geist Mono. Icons are Phosphor, Regular weight (it matches the prototype's line weight).
 - **Database, sign-in and files:** Supabase. Postgres with row-level security, email magic-link sign-in, and Storage for attachments.
 - **AI:** the Claude API with structured output, for shaping a capsule from a description. Keep the model name in an environment variable.
 - **Email:** Resend, sending from hello@workwithcapsule.com as "Christina from Capsule"
