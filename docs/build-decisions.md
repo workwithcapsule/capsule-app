@@ -42,3 +42,10 @@ Answers Christina gave before the build started. These sit alongside `v1-scope.m
 
 20. **Invite links sign people straight in.** The invite email's link is private and single-use, and signs the invited person in on the spot (creating their account the first time), so there's no second sign-in email. After that they sign in with the usual emailed link. Links last **7 days**, stop working when used, withdrawn or replaced by a resend.
 21. **Invites sent before this change** keep working the old way (sign in, then join). Resend any of them to get a one-click link.
+
+## Step 4 answers (Nov. 11 2026)
+
+22. **Creating spaces:** anyone in the org, from a **New space** button on Browse spaces.
+23. **Managing a space in V1:** the creator and org admins can change its name and description. People join and leave themselves; removing members comes later.
+24. **Space page capsule list:** a simple list now (key, name, status, owner); filters and sorting come with the Capsules page in step 5.
+25. **Browse spaces layout (changes the prototype):** a **Your spaces** section first, then **Other spaces** (public spaces you haven't joined), each alphabetical. Nothing appears twice.

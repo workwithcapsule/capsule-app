@@ -744,6 +744,64 @@ const groups: Group[] = [
       },
       {
         who: "christina",
+        tries: "change Engineering's description (she created it)",
+        expect: "allowed",
+        run: write(
+          `update public.spaces set description = 'Product and platform work' where id = $1`,
+          [SPACE.en],
+        ),
+      },
+      {
+        who: "bob",
+        tries: "change Engineering's description",
+        expect: "blocked",
+        run: write(`update public.spaces set description = 'Bob was here' where id = $1`, [
+          SPACE.en,
+        ]),
+      },
+      {
+        who: "christina",
+        tries: "leave Engineering, then undo, keeping her manager role",
+        expect: "allowed",
+        run: async (db) => {
+          await attempt(
+            db,
+            `delete from public.space_members where space_id = $1 and user_id = $2`,
+            [SPACE.en, P.christina],
+          );
+          const back = await attempt(
+            db,
+            `insert into public.space_members (org_id, space_id, user_id, role) values ($1, $2, $3, 'admin')`,
+            [ORG.acme, SPACE.en, P.christina],
+          );
+          const role = await value<string>(
+            db,
+            `select role from public.space_members where space_id = $1 and user_id = $2`,
+            [SPACE.en, P.christina],
+          );
+          return check(back.allowed && role === "admin", `${back.detail}; role ${role}`);
+        },
+      },
+      {
+        who: "bob",
+        tries: "join a space as its manager",
+        expect: "blocked",
+        run: write(
+          `insert into public.space_members (org_id, space_id, user_id, role) values ($1, $2, $3, 'admin')`,
+          [ORG.acme, SPACE.pp, P.bob],
+        ),
+      },
+      {
+        who: "maya",
+        tries: "open a space she hasn't joined and see its capsules",
+        expect: "allowed",
+        run: read(
+          `select 1 from public.spaces s join public.capsules c on c.space_id = s.id where s.id = $1`,
+          [SPACE.en],
+        ),
+      },
+      {
+        who: "christina",
         tries: "change Engineering's key prefix (would break capsule keys)",
         expect: "blocked",
         run: write(`update public.spaces set key_prefix = 'ENG' where id = $1`, [SPACE.en]),
