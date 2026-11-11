@@ -1,0 +1,6 @@
+# Supabase project settings for this repo. The GitHub integration applies
+# supabase/migrations to the production project when changes reach main.
+project_id = "capsule-app"
+
+[db]
+major_version = 17
