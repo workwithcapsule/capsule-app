@@ -1639,6 +1639,180 @@ const groups: Group[] = [
       },
     ],
   },
+  {
+    title: "The activity log",
+    cases: [
+      {
+        who: "christina",
+        tries: "change EN-1's status, which logs who changed it, from what and to what",
+        expect: "allowed",
+        run: async (db) => {
+          await attempt(db, `update public.capsules set status = 'in_review' where id = $1`, [
+            CAPSULE.en1,
+          ]);
+          const entry = await value<string>(
+            db,
+            `select actor_user_id || ' ' || kind || ' ' || (data ->> 'field') || ' ' ||
+                    (data ->> 'from') || '>' || (data ->> 'to')
+             from public.events where capsule_id = $1 and kind <> 'comment'`,
+            [CAPSULE.en1],
+          );
+          return check(
+            entry === `${P.christina} capsule_changed status not_started>in_review`,
+            String(entry),
+          );
+        },
+      },
+      {
+        who: "dana",
+        tries: "check off her work item, which logs it under her name",
+        expect: "allowed",
+        run: async (db) => {
+          await attempt(db, `update public.work_items set done = true where id = $1`, [
+            ITEM.techApi,
+          ]);
+          const entry = await value<string>(
+            db,
+            `select actor_user_id || ' ' || kind || ' ' || (data ->> 'field') || ' ' || (data ->> 'component')
+             from public.events where capsule_id = $1 and kind <> 'comment'`,
+            [CAPSULE.en1],
+          );
+          return check(entry === `${P.dana} item_changed done Tech`, String(entry));
+        },
+      },
+      {
+        who: "christina",
+        tries: "remove Operations (moving its items) and undo it, which logs one entry for each",
+        expect: "allowed",
+        run: async (db) => {
+          const snap = await value<object>(db, `select public.remove_component($1, $2)`, [
+            COMP.en1Ops,
+            COMP.en1Tech,
+          ]);
+          await value(db, `select public.restore_component($1::jsonb)`, [JSON.stringify(snap)]);
+          const entries = await value<string>(
+            db,
+            `select string_agg(kind || coalesce(':' || (data ->> 'items') || ':' || (data ->> 'moved_to'), ''),
+                               ',' order by created_at)
+             from public.events where capsule_id = $1 and kind <> 'comment'`,
+            [CAPSULE.en1],
+          );
+          return check(entries === "component_removed:2:Tech,component_restored", String(entries));
+        },
+      },
+      {
+        who: "christina",
+        tries: "create a capsule, which logs one “created” entry (not one per component)",
+        expect: "allowed",
+        run: async (db) => {
+          const made = await value<{ id: string }>(db, `select public.create_capsule($1::jsonb)`, [
+            JSON.stringify({
+              space_id: SPACE.en,
+              name: "Logged capsule",
+              components: [
+                { component_type_id: TYPE.tech, items: [{ title: "First item" }] },
+                { component_type_id: TYPE.ops },
+              ],
+            }),
+          ]);
+          const entries = await value<string>(
+            db,
+            `select string_agg(kind, ',') from public.events where capsule_id = $1`,
+            [made!.id],
+          );
+          return check(entries === "capsule_created", String(entries));
+        },
+      },
+      {
+        who: "maya",
+        tries: "read EN-1's activity (everyone in the org can see the capsule)",
+        expect: "allowed",
+        run: read(`select 1 from public.events where capsule_id = $1`, [CAPSULE.en1]),
+      },
+      {
+        who: "olga",
+        tries: "read EN-1's activity from another org",
+        expect: "blocked",
+        run: read(`select 1 from public.events where capsule_id = $1`, [CAPSULE.en1]),
+      },
+      {
+        who: "jon",
+        tries: "post a comment that @mentions Dana (on the team) and Bob (a follower)",
+        expect: "allowed",
+        run: async (db) => {
+          const ev = await value<string>(db, `select public.post_comment($1, $2, $3)`, [
+            CAPSULE.en1,
+            "@Dana Kim @Bob can you both look?",
+            [P.dana, P.bob],
+          ]);
+          const mentioned = await value<string>(
+            db,
+            `select string_agg(user_id::text, ',') from public.mentions where event_id = $1`,
+            [ev],
+          );
+          return check(mentioned === P.dana, `mentions saved for: ${mentioned}`);
+        },
+      },
+      {
+        who: "bob",
+        tries: "post a comment (followers are read-only)",
+        expect: "blocked",
+        run: write(`select public.post_comment($1, 'Looks good', '{}')`, [CAPSULE.en1]),
+      },
+      {
+        who: "alex",
+        tries: "post a comment (org admin, not on the team)",
+        expect: "blocked",
+        run: write(`select public.post_comment($1, 'Admin note', '{}')`, [CAPSULE.en1]),
+      },
+      {
+        who: "jon",
+        tries: "post a comment over 2,000 characters",
+        expect: "blocked",
+        run: write(`select public.post_comment($1, repeat('a', 2001), '{}')`, [CAPSULE.en1]),
+      },
+      {
+        who: "christina",
+        tries: "delete her own comment, then undo that",
+        expect: "allowed",
+        run: async (db) => {
+          const del = await attempt(
+            db,
+            `insert into public.events (org_id, capsule_id, actor_user_id, kind, data)
+             values ($1, $2, $3, 'comment_deleted', jsonb_build_object('comment_id', $4::text))`,
+            [ORG.acme, CAPSULE.en1, P.christina, EVENT.en1Comment],
+          );
+          const undo = await attempt(
+            db,
+            `insert into public.events (org_id, capsule_id, actor_user_id, kind, data)
+             values ($1, $2, $3, 'comment_restored', jsonb_build_object('comment_id', $4::text))`,
+            [ORG.acme, CAPSULE.en1, P.christina, EVENT.en1Comment],
+          );
+          return check(del.allowed && undo.allowed, `${del.detail}; ${undo.detail}`);
+        },
+      },
+      {
+        who: "dana",
+        tries: "delete Christina's comment",
+        expect: "blocked",
+        run: write(
+          `insert into public.events (org_id, capsule_id, actor_user_id, kind, data)
+           values ($1, $2, $3, 'comment_deleted', jsonb_build_object('comment_id', $4::text))`,
+          [ORG.acme, CAPSULE.en1, P.dana, EVENT.en1Comment],
+        ),
+      },
+      {
+        who: "christina",
+        tries: "file a delete for her EN-1 comment under a different capsule",
+        expect: "blocked",
+        run: write(
+          `insert into public.events (org_id, capsule_id, actor_user_id, kind, data)
+           values ($1, $2, $3, 'comment_deleted', jsonb_build_object('comment_id', $4::text))`,
+          [ORG.acme, CAPSULE.en2, P.christina, EVENT.en1Comment],
+        ),
+      },
+    ],
+  },
 ];
 
 const results: { group: string; who: string; tries: string; expect: Expect; got: Expect }[] = [];

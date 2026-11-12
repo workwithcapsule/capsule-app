@@ -19,6 +19,7 @@ function explain(error: { code?: string; message: string }): string {
   if (error.code === "42501")
     return error.message.startsWith("new row") ? NOT_ALLOWED : error.message;
   if (error.code === "23505") return "That’s already there.";
+  if (error.code === "22023") return error.message;
   return SOMETHING_WRONG;
 }
 
@@ -118,6 +119,8 @@ export async function removeCollaborator(componentId: string, userId: string): P
 // Work items ------------------------------------------------------------------
 
 export async function addWorkItem(input: {
+  /** Set when Undo puts back a deleted item, so it keeps its id. */
+  id?: string;
   orgId: string;
   capsuleId: string;
   componentId: string;
@@ -131,6 +134,7 @@ export async function addWorkItem(input: {
   const { data, error } = await supabase
     .from("work_items")
     .insert({
+      ...(input.id && { id: input.id }),
       org_id: input.orgId,
       capsule_id: input.capsuleId,
       component_id: input.componentId,
@@ -214,4 +218,59 @@ export async function restoreComponent(snapshot: unknown): Promise<Result> {
   if (error) return { ok: false, error: explain(error) };
   refresh();
   return { ok: true };
+}
+
+// Comments ----------------------------------------------------------------------
+
+export async function postComment(input: {
+  capsuleId: string;
+  body: string;
+  mentions: string[];
+}): Promise<Result<{ id: string }>> {
+  const body = input.body.trim();
+  if (!body) return { ok: false, error: "Write a comment first." };
+  if (body.length > 2000) return { ok: false, error: "Comments can be up to 2,000 characters." };
+  const { supabase } = await db();
+  const { data, error } = await supabase.rpc("post_comment", {
+    p_capsule: input.capsuleId,
+    p_body: body,
+    p_mentions: input.mentions,
+  });
+  if (error) return { ok: false, error: explain(error) };
+  refresh();
+  return { ok: true, data: { id: data as string } };
+}
+
+/** Deleting your own comment adds an entry that hides it; Undo adds one that shows it again. */
+async function markComment(
+  kind: "comment_deleted" | "comment_restored",
+  input: { orgId: string; capsuleId: string; commentId: string },
+): Promise<Result> {
+  const { supabase, userId } = await db();
+  const { error } = await supabase.from("events").insert({
+    org_id: input.orgId,
+    capsule_id: input.capsuleId,
+    actor_user_id: userId,
+    kind,
+    data: { comment_id: input.commentId },
+  });
+  if (error) return { ok: false, error: explain(error) };
+  refresh();
+  return { ok: true };
+}
+
+export async function deleteComment(input: {
+  orgId: string;
+  capsuleId: string;
+  commentId: string;
+}): Promise<Result> {
+  return markComment("comment_deleted", input);
+}
+
+export async function restoreComment(input: {
+  orgId: string;
+  capsuleId: string;
+  commentId: string;
+}): Promise<Result> {
+  return markComment("comment_restored", input);
 }

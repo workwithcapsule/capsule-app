@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import type { CapsuleRow } from "@/lib/capsules-list";
 import { fmtDate, fmtRelative } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { NativeSelect } from "@/components/ui/native-select";
 
 /* The Capsules page (prototype capsulesScreen): every capsule you created, work on or follow. */
 
@@ -112,11 +113,11 @@ export function CapsulesTable({
         <label className="sr-only" htmlFor="caps-space">
           Space
         </label>
-        <select
+        <NativeSelect
           id="caps-space"
           value={space}
           onChange={(e) => setSpace(e.target.value)}
-          className="h-[38px] rounded-[10px] border border-border bg-surface px-2.5 text-sm outline-none focus:border-control"
+          className="h-[38px]"
         >
           <option value="all">All spaces</option>
           {spaces.map((s) => (
@@ -124,21 +125,21 @@ export function CapsulesTable({
               {s.name}
             </option>
           ))}
-        </select>
+        </NativeSelect>
         <label className="sr-only" htmlFor="caps-sort">
           Sort
         </label>
-        <select
+        <NativeSelect
           id="caps-sort"
           value={sort}
           onChange={(e) => setSort(e.target.value as Sort)}
-          className="h-[38px] rounded-[10px] border border-border bg-surface px-2.5 text-sm outline-none focus:border-control"
+          className="h-[38px]"
         >
           <option value="attention">Needs you first</option>
           <option value="launch">Launch date</option>
           <option value="recent">Recently updated</option>
           <option value="name">Name A–Z</option>
-        </select>
+        </NativeSelect>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-border bg-surface shadow-card">
