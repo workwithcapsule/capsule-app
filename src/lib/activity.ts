@@ -277,3 +277,38 @@ export function splitMentions(body: string, people: { id: string; name: string }
   if (buf) parts.push({ text: buf });
   return parts;
 }
+
+// The follower view -----------------------------------------------------------
+
+/**
+ * What a follower's Activity shows (design-decisions.md section 4): date
+ * shifts, status changes, scope changes, finished milestones and comments.
+ * Individual work items are left out.
+ */
+export function forFollowers(e: FeedEntry): boolean {
+  switch (e.kind) {
+    case "comment":
+    case "capsule_created":
+    case "component_added":
+    case "component_removed":
+    case "component_restored":
+      return true;
+    case "capsule_changed":
+      return ["status", "launch_date", "date_type"].includes(str(e.data.field));
+    case "component_changed":
+      return ["status", "due_date"].includes(str(e.data.field));
+  }
+  return false;
+}
+
+/** The kind of change, shown under each entry in the follower view (prototype labels). */
+export function kindLabel(e: FeedEntry): string {
+  const field = str(e.data.field);
+  if (e.kind === "comment") return "Comment";
+  if (field === "launch_date" || field === "date_type" || field === "due_date")
+    return "Date change";
+  if (e.kind === "component_changed" && field === "status" && e.to === "done") return "Milestone";
+  if (field === "status") return "Status change";
+  if (e.kind.startsWith("component_") || e.kind === "capsule_created") return "Scope change";
+  return "Update";
+}

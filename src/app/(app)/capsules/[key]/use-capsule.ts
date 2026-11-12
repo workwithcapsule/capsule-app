@@ -20,7 +20,9 @@ export type Op =
   | { type: "removeItem"; id: string }
   | { type: "addCollaborator"; componentId: string; userId: string }
   | { type: "removeCollaborator"; componentId: string; userId: string }
-  | { type: "addEvent"; event: ActivityEvent };
+  | { type: "addEvent"; event: ActivityEvent }
+  | { type: "follow"; userId: string; since: string }
+  | { type: "unfollow"; userId: string };
 
 function apply(state: CapsuleData, op: Op): CapsuleData {
   switch (op.type) {
@@ -55,6 +57,16 @@ function apply(state: CapsuleData, op: Op): CapsuleData {
             : c,
         ),
       };
+    case "follow":
+      return {
+        ...state,
+        followers: [
+          { userId: op.userId, since: op.since },
+          ...state.followers.filter((f) => f.userId !== op.userId),
+        ],
+      };
+    case "unfollow":
+      return { ...state, followers: state.followers.filter((f) => f.userId !== op.userId) };
     case "addEvent":
       return { ...state, activity: [op.event, ...state.activity] };
     case "removeCollaborator":

@@ -51,7 +51,7 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
     .maybeSingle();
   if (!cap) return null;
 
-  const [components, items, collaborators, people, types, events] = await Promise.all([
+  const [components, items, collaborators, people, types, events, followers] = await Promise.all([
     supabase
       .from("components")
       .select(
@@ -82,6 +82,11 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
       .eq("capsule_id", cap.id)
       .order("created_at", { ascending: false })
       .limit(500),
+    supabase
+      .from("followers")
+      .select("user_id, created_at")
+      .eq("capsule_id", cap.id)
+      .order("created_at", { ascending: false }),
   ]);
 
   const me = people.find((p) => p.id === userId) ?? { id: userId, name: "You", initials: "Y" };
@@ -133,6 +138,7 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
     people,
     componentTypes: (types.data ?? []).map((t) => ({ ...t, color: t.color as ComponentColor })),
     me,
+    followers: (followers.data ?? []).map((f) => ({ userId: f.user_id, since: f.created_at })),
     activity: (events.data ?? []).map((e) => ({
       id: e.id,
       kind: e.kind,

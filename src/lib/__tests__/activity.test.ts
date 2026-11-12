@@ -1,5 +1,12 @@
 import { describe as group, expect, it } from "vitest";
-import { buildFeed, describe, splitMentions, type ActivityEvent } from "@/lib/activity";
+import {
+  buildFeed,
+  describe,
+  forFollowers,
+  kindLabel,
+  splitMentions,
+  type ActivityEvent,
+} from "@/lib/activity";
 
 const ME = "u-me";
 const DANA = "u-dana";
@@ -184,5 +191,24 @@ group("splitMentions", () => {
     expect(splitMentions("mail jon@acme.test or @Zed", people)).toEqual([
       { text: "mail jon@acme.test or @Zed" },
     ]);
+  });
+});
+
+group("the follower view", () => {
+  it("keeps dates, status, scope, milestones and comments; leaves out work items", () => {
+    const feed = buildFeed([
+      ev(0, "capsule_changed", { field: "launch_date", from: "2026-12-01", to: "2026-12-15" }),
+      ev(10, "component_changed", {
+        component: "Tech",
+        field: "status",
+        from: "in_review",
+        to: "done",
+      }),
+      ev(20, "item_changed", { item_id: "i", title: "API", field: "done", from: false, to: true }),
+      ev(30, "component_changed", { component: "Tech", field: "goal", from: null, to: "Ship" }),
+      ev(40, "component_added", { component_id: "c9", component: "Legal" }),
+      ev(50, "comment", { body: "Heads up" }),
+    ]).filter(forFollowers);
+    expect(feed.map(kindLabel)).toEqual(["Comment", "Scope change", "Milestone", "Date change"]);
   });
 });
