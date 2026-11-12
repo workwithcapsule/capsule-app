@@ -1415,6 +1415,123 @@ const groups: Group[] = [
       },
     ],
   },
+  {
+    title: "Creating capsules",
+    cases: [
+      {
+        who: "maya",
+        tries:
+          "create a capsule with Dana as owner, components, a collaborator and a work item, all at once",
+        expect: "allowed",
+        run: async (db) => {
+          const res = await value<{ id: string; key: string }>(
+            db,
+            `select public.create_capsule($1::jsonb)`,
+            [
+              JSON.stringify({
+                space_id: SPACE.en,
+                name: "Partner portal refresh",
+                outcome: "Refresh the partner portal before the summit.",
+                launch_date: "2026-12-15",
+                owner_id: P.dana,
+                components: [
+                  {
+                    component_type_id: TYPE.tech,
+                    owner_id: P.jon,
+                    due_date: "2026-12-01",
+                    goal: "New portal live",
+                    collaborators: [P.bob],
+                    items: [{ title: "Audit current pages", assignee_id: P.maya }, { title: "  " }],
+                  },
+                  { component_type_id: TYPE.sales, items: [] },
+                ],
+              }),
+            ],
+          );
+          const cap = await value<{ owner_id: string; created_by: string }>(
+            db,
+            `select row_to_json(c) from (select owner_id, created_by from public.capsules where id = $1) c`,
+            [res?.id],
+          );
+          const people = await value<string>(
+            db,
+            `select string_agg(user_id::text || ':' || source, ',' order by source) from public.component_people where capsule_id = $1`,
+            [res?.id],
+          );
+          const items = await value<number>(
+            db,
+            `select count(*)::int from public.work_items where capsule_id = $1`,
+            [res?.id],
+          );
+          return check(
+            res?.key === "EN-3" &&
+              cap?.owner_id === P.dana &&
+              cap?.created_by === P.maya &&
+              people === `${P.bob}:added,${P.maya}:assignment` &&
+              items === 1,
+            `key ${res?.key}; ${JSON.stringify(cap)}; people ${people}; items ${items}`,
+          );
+        },
+      },
+      {
+        who: "olga",
+        tries: "create a capsule in Acme's Engineering space",
+        expect: "blocked",
+        run: write(`select public.create_capsule($1::jsonb)`, [
+          JSON.stringify({ space_id: SPACE.en, name: "Nope" }),
+        ]),
+      },
+      {
+        who: "christina",
+        tries: "create a capsule owned by someone from another org",
+        expect: "blocked",
+        run: write(`select public.create_capsule($1::jsonb)`, [
+          JSON.stringify({ space_id: SPACE.en, name: "Cross-org", owner_id: P.olga }),
+        ]),
+      },
+      {
+        who: "christina",
+        tries: "create a capsule where one part fails, leaving nothing half-made",
+        expect: "blocked",
+        run: async (db) => {
+          const r = await attempt(db, `select public.create_capsule($1::jsonb)`, [
+            JSON.stringify({
+              space_id: SPACE.en,
+              name: "Half made",
+              components: [{ component_type_id: TYPE.tech }, { component_type_id: TYPE.tech }],
+            }),
+          ]);
+          const left = await value<number>(
+            db,
+            `select count(*)::int from public.capsules where name = 'Half made'`,
+          );
+          return check(r.allowed || left !== 0, `${r.detail}; capsules left behind: ${left}`);
+        },
+      },
+      {
+        who: "sam",
+        tries: "create a capsule without being in any org",
+        expect: "blocked",
+        run: write(`select public.create_capsule($1::jsonb)`, [
+          JSON.stringify({ space_id: SPACE.en, name: "Outsider" }),
+        ]),
+      },
+      {
+        who: "dana",
+        tries: "set the goal for Tech, the component she owns",
+        expect: "allowed",
+        run: write(`update public.components set goal = 'API live for partners' where id = $1`, [
+          COMP.en1Tech,
+        ]),
+      },
+      {
+        who: "jon",
+        tries: "set the goal for Tech, which he doesn't own",
+        expect: "blocked",
+        run: write(`update public.components set goal = 'Mine' where id = $1`, [COMP.en1Tech]),
+      },
+    ],
+  },
 ];
 
 const results: { group: string; who: string; tries: string; expect: Expect; got: Expect }[] = [];

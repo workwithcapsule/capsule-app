@@ -49,3 +49,10 @@ Answers Christina gave before the build started. These sit alongside `v1-scope.m
 23. **Managing a space in V1:** the creator and org admins can change its name and description. People join and leave themselves; removing members comes later.
 24. **Space page capsule list:** a simple list now (key, name, status, owner); filters and sorting come with the Capsules page in step 5.
 25. **Browse spaces layout (changes the prototype):** a **Your spaces** section first, then **Other spaces** (public spaces you haven't joined), each alphabetical. Nothing appears twice.
+
+## Step 5 answers (Nov. 11 2026)
+
+26. **Component goal:** each component has an optional goal ("What does done look like for Tech?"), as in the prototype.
+27. **"Needs you here" strip:** built in step 8 together with Home's Needs your attention.
+28. **New capsule:** goes straight to the "Set up your capsule" form until step 9 adds the AI composer in front of it.
+29. **Step 5 in two parts:** 5a (creating capsules and the capsule page) and 5b (the Capsules page and adding or removing components).
