@@ -6,6 +6,7 @@ import { Avatar, AvatarStack } from "@/components/avatar";
 import { EditableText } from "@/components/editable-text";
 import { StatusPill } from "@/components/status-pill";
 import { useToast } from "@/components/toaster";
+import { Button } from "@/components/ui/button";
 import type { SpacePage } from "@/lib/spaces";
 import { updateSpace } from "../actions";
 import { MembershipButton, useMembership } from "../membership";
@@ -99,10 +100,17 @@ export function SpaceView({ initial }: { initial: SpacePage }) {
       </header>
 
       <section aria-labelledby="caps-h" className="flex flex-col gap-3">
-        <h2 id="caps-h" className="text-base leading-6 font-semibold">
-          Capsules{" "}
-          <span className="font-normal text-muted-foreground">{space.capsules.length}</span>
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="caps-h" className="text-base leading-6 font-semibold">
+            Capsules{" "}
+            <span className="font-normal text-muted-foreground">{space.capsules.length}</span>
+          </h2>
+          <Button asChild variant="secondary">
+            <Link href={`/new?space=${space.keyPrefix.toLowerCase()}`}>
+              New capsule in {space.name}
+            </Link>
+          </Button>
+        </div>
         {space.capsules.length ? (
           <ul className="rounded-2xl border border-border bg-surface shadow-card">
             {space.capsules.map((c) => (
@@ -113,7 +121,12 @@ export function SpaceView({ initial }: { initial: SpacePage }) {
                 <span className="w-16 flex-none font-mono text-xs text-muted-foreground">
                   {c.key}
                 </span>
-                <span className="min-w-0 flex-1 truncate font-medium">{c.name}</span>
+                <Link
+                  href={`/capsules/${c.key.toLowerCase()}`}
+                  className="min-w-0 flex-1 truncate font-medium text-foreground no-underline hover:underline"
+                >
+                  {c.name}
+                </Link>
                 <StatusPill status={c.status} />
                 <span className="flex w-40 flex-none items-center gap-2 text-[13px] text-muted-foreground">
                   {c.owner ? (

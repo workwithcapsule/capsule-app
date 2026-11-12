@@ -50,3 +50,19 @@ describe("invite link codes", () => {
     expect(looksLikeInviteCode("short")).toBe(false);
   });
 });
+
+import { daysUntil, fmtDate } from "../dates";
+
+describe("dates", () => {
+  const today = new Date(2026, 10, 11); // Nov 11 2026
+  it("formats like the prototype", () => {
+    expect(fmtDate("2026-12-01", today)).toBe("Dec 1");
+    expect(fmtDate("2027-01-15", today)).toBe("Jan 15, 2027");
+    expect(fmtDate(null, today)).toBe("");
+  });
+  it("counts days to a date", () => {
+    expect(daysUntil("2026-11-11", today)).toBe(0);
+    expect(daysUntil("2026-11-21", today)).toBe(10);
+    expect(daysUntil("2026-11-01", today)).toBe(-10);
+  });
+});

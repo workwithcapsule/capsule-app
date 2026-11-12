@@ -17,6 +17,7 @@ export function EditableText({
   maxLength,
   className,
   inputClassName,
+  multiline,
 }: {
   value: string;
   onSave: (next: string) => Promise<boolean>;
@@ -26,11 +27,13 @@ export function EditableText({
   maxLength?: number;
   className?: string;
   inputClassName?: string;
+  /** A two-line text box (for longer text like a capsule's outcome). Enter still saves. */
+  multiline?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
+  const input = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (editing) input.current?.select();
@@ -73,31 +76,38 @@ export function EditableText({
   }
 
   return (
-    <span className={cn("-mx-1.5 flex items-center gap-1", className)}>
-      <input
-        ref={input}
-        aria-label={label}
-        value={draft}
-        maxLength={maxLength}
-        placeholder={placeholder}
-        disabled={saving}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            void save();
-          }
-          if (e.key === "Escape") {
-            e.preventDefault();
-            cancel();
-          }
-        }}
-        aria-invalid={invalid ? true : undefined}
-        className={cn(
-          "min-w-0 flex-1 rounded-lg border border-control bg-surface px-1.5 outline-none focus-visible:outline-none aria-[invalid=true]:border-c-red-fg",
-          inputClassName,
-        )}
-      />
+    <span
+      className={cn("-mx-1.5 flex gap-1", multiline ? "items-start" : "items-center", className)}
+    >
+      {(() => {
+        const props = {
+          ref: input,
+          "aria-label": label,
+          value: draft,
+          maxLength,
+          placeholder,
+          disabled: saving,
+          onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+            setDraft(e.target.value),
+          onKeyDown: (e: React.KeyboardEvent) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void save();
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              cancel();
+            }
+          },
+          "aria-invalid": invalid ? true : undefined,
+          className: cn(
+            "min-w-0 flex-1 rounded-lg border border-control bg-surface px-1.5 outline-none focus-visible:outline-none aria-[invalid=true]:border-c-red-fg",
+            multiline && "resize-none py-1",
+            inputClassName,
+          ),
+        };
+        return multiline ? <textarea rows={2} {...props} /> : <input {...props} />;
+      })()}
       <button
         type="button"
         aria-label="Save"
