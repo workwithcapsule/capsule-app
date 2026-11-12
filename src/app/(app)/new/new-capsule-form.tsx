@@ -14,6 +14,7 @@ import { COMPONENT_COLOR_CLASSES } from "@/lib/design";
 import type { ComponentType, PersonRef } from "@/lib/capsule-types";
 import { cn } from "@/lib/utils";
 import { createCapsule } from "../capsules/actions";
+import { NativeSelect } from "@/components/ui/native-select";
 
 /*
  * "Set up your capsule" (prototype New capsule, filling in the fields).
@@ -182,12 +183,13 @@ export function NewCapsuleForm({
         <div className="grid grid-cols-1 gap-[18px] min-[640px]:grid-cols-3">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="f-space">Space</Label>
-            <select
+            <NativeSelect
               id="f-space"
               value={spaceId}
               onChange={(e) => setSpaceId(e.target.value)}
               aria-invalid={tried && spaceError ? true : undefined}
-              className="h-10 rounded-[10px] border border-border bg-surface px-2.5 text-sm outline-none focus:border-control aria-[invalid=true]:border-c-red-fg"
+              className="h-10 aria-[invalid=true]:border-c-red-fg"
+              wrapperClassName="w-full"
             >
               {!spaces.length && <option value="">No spaces yet</option>}
               {spaces.map((s) => (
@@ -195,7 +197,7 @@ export function NewCapsuleForm({
                   {s.name} ({s.keyPrefix})
                 </option>
               ))}
-            </select>
+            </NativeSelect>
             <FieldError>{tried ? spaceError : ""}</FieldError>
           </div>
           <div className="flex flex-col gap-1.5">

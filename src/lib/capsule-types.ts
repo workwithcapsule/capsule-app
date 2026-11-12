@@ -1,3 +1,4 @@
+import type { ActivityEvent } from "@/lib/activity";
 import type { ComponentColor, Status } from "@/lib/design";
 
 /** Shapes shared by the capsule page (server) and its interactive parts (browser). */
@@ -56,6 +57,8 @@ export type CapsuleData = {
   people: PersonRef[];
   componentTypes: ComponentType[];
   me: PersonRef;
+  /** The capsule's activity log, newest first (raw; see lib/activity.ts). */
+  activity: ActivityEvent[];
 };
 
 /** Mirrors the database's rules, so the page only shows what each person can change. */

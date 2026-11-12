@@ -37,6 +37,7 @@ import {
   updateWorkItem,
 } from "../actions";
 import type { useCapsule } from "./use-capsule";
+import { NativeSelect } from "@/components/ui/native-select";
 
 type Change = ReturnType<typeof useCapsule>["change"];
 
@@ -315,18 +316,18 @@ function RemoveTray({
             <label htmlFor="move-to" className="text-[13px] text-muted-foreground">
               Move them to
             </label>
-            <select
+            <NativeSelect
               id="move-to"
               value={moveTo}
               onChange={(e) => setMoveTo(e.target.value)}
-              className="h-8 rounded-lg border border-border bg-surface px-2 text-[13px] outline-none focus:border-control"
+              className="h-8 rounded-lg pl-2 text-[13px]"
             >
               {targets.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
             <Button variant="primary" onClick={() => onRemove(moveTo)}>
               Move and remove
             </Button>
@@ -622,9 +623,10 @@ function WorkItemRow({
     change({ type: "removeItem", id: item.id }, () => deleteWorkItem(item.id), {
       message: `Deleted “${item.title}” from ${componentName}.`,
       undo: {
-        op: { type: "addItem", item: { ...item, id: tempId() } },
+        op: { type: "addItem", item },
         save: () =>
           addWorkItem({
+            id: item.id,
             orgId: view.capsule.orgId,
             capsuleId: view.capsule.id,
             componentId: item.componentId,

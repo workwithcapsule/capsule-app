@@ -2,6 +2,7 @@
 
 import type { CapsuleData } from "@/lib/capsule-types";
 import { permissionsFor } from "@/lib/capsule-types";
+import { ActivitySection } from "./activity-section";
 import { CapsuleHeader } from "./capsule-header";
 import { ComponentsSection } from "./components-section";
 import { Overview } from "./overview";
@@ -10,7 +11,7 @@ import { useCapsule } from "./use-capsule";
 
 /**
  * The capsule page (design-decisions.md sections 2, 3 and 10). Activity and
- * comments (step 6), Follow (step 7), Needs you here (step 8) and
+ * comments are in the side panel. Follow (step 7), Needs you here (step 8) and
  * Attachments (step 10) join this page later.
  */
 export function CapsuleView({ initial }: { initial: CapsuleData }) {
@@ -27,6 +28,7 @@ export function CapsuleView({ initial }: { initial: CapsuleData }) {
         </div>
         <aside className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">
           <TeamSection view={view} perms={perms} change={change} />
+          <ActivitySection view={view} perms={perms} change={change} />
         </aside>
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import { useOptimistic, useTransition } from "react";
 import { useToast } from "@/components/toaster";
+import type { ActivityEvent } from "@/lib/activity";
 import type { CapsuleComponent, CapsuleData, WorkItem } from "@/lib/capsule-types";
 import type { Result } from "../actions";
 
@@ -18,7 +19,8 @@ export type Op =
   | { type: "addItem"; item: WorkItem }
   | { type: "removeItem"; id: string }
   | { type: "addCollaborator"; componentId: string; userId: string }
-  | { type: "removeCollaborator"; componentId: string; userId: string };
+  | { type: "removeCollaborator"; componentId: string; userId: string }
+  | { type: "addEvent"; event: ActivityEvent };
 
 function apply(state: CapsuleData, op: Op): CapsuleData {
   switch (op.type) {
@@ -53,6 +55,8 @@ function apply(state: CapsuleData, op: Op): CapsuleData {
             : c,
         ),
       };
+    case "addEvent":
+      return { ...state, activity: [op.event, ...state.activity] };
     case "removeCollaborator":
       return {
         ...state,
