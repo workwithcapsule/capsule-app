@@ -73,14 +73,16 @@ export function useCapsule(initial: CapsuleData) {
   /**
    * Shows `op` right away and runs `save`. On success, optionally shows a
    * toast; if `undo` is given, the toast offers Undo (which runs undo's own op
-   * and save, without a further Undo).
+   * and save, without a further Undo). `undo` may also be a function of what
+   * the save returned (for example, a snapshot to restore).
    */
-  function change(
+  type Undo = { op: Op | Op[]; save: () => Promise<Result<unknown>> };
+  function change<T>(
     op: Op | Op[],
-    save: () => Promise<Result<unknown>>,
+    save: () => Promise<Result<T>>,
     options: {
       message?: string;
-      undo?: { op: Op | Op[]; save: () => Promise<Result<unknown>> };
+      undo?: Undo | ((data: T | undefined) => Undo);
     } = {},
   ) {
     startTransition(async () => {
@@ -91,7 +93,7 @@ export function useCapsule(initial: CapsuleData) {
         return;
       }
       if (options.message) {
-        const undo = options.undo;
+        const undo = typeof options.undo === "function" ? options.undo(r.data) : options.undo;
         toast(options.message, undo ? { undo: () => change(undo.op, undo.save) } : undefined);
       }
     });

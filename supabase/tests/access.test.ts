@@ -1532,6 +1532,113 @@ const groups: Group[] = [
       },
     ],
   },
+  {
+    title: "Removing components",
+    cases: [
+      {
+        who: "christina",
+        tries: "remove Operations, moving its work items to Tech, then undo it exactly",
+        expect: "allowed",
+        run: async (db) => {
+          const snap = await value<object>(db, `select public.remove_component($1, $2)`, [
+            COMP.en1Ops,
+            COMP.en1Tech,
+          ]);
+          const movedTo = await value<string>(
+            db,
+            `select component_id from public.work_items where id = $1`,
+            [ITEM.opsRunbook],
+          );
+          const jonOnTech = await value<boolean>(
+            db,
+            `select exists (select 1 from public.component_people where component_id = $1 and user_id = $2)`,
+            [COMP.en1Tech, P.jon],
+          );
+          await value(db, `select public.restore_component($1::jsonb)`, [JSON.stringify(snap)]);
+          const back = await value<string>(
+            db,
+            `select component_id from public.work_items where id = $1`,
+            [ITEM.opsRunbook],
+          );
+          const jonOnOps = await value<boolean>(
+            db,
+            `select exists (select 1 from public.component_people where component_id = $1 and user_id = $2)`,
+            [COMP.en1Ops, P.jon],
+          );
+          const jonStillOnTech = await value<boolean>(
+            db,
+            `select exists (select 1 from public.component_people where component_id = $1 and user_id = $2)`,
+            [COMP.en1Tech, P.jon],
+          );
+          return check(
+            movedTo === COMP.en1Tech &&
+              jonOnTech === true &&
+              back === COMP.en1Ops &&
+              jonOnOps === true &&
+              jonStillOnTech === false,
+            `moved to ${movedTo}; Jon on Tech ${jonOnTech}; back in ${back}; Jon on Ops ${jonOnOps}; still on Tech ${jonStillOnTech}`,
+          );
+        },
+      },
+      {
+        who: "christina",
+        tries: "remove Operations with its work items, then undo, getting the same items back",
+        expect: "allowed",
+        run: async (db) => {
+          await attempt(db, `update public.work_items set done = true where id = $1`, [
+            ITEM.opsTraining,
+          ]);
+          const snap = await value<object>(db, `select public.remove_component($1, null)`, [
+            COMP.en1Ops,
+          ]);
+          const gone = await value<number>(
+            db,
+            `select count(*)::int from public.work_items where component_id = $1`,
+            [COMP.en1Ops],
+          );
+          await value(db, `select public.restore_component($1::jsonb)`, [JSON.stringify(snap)]);
+          const items = await value<string>(
+            db,
+            `select string_agg(id::text || ':' || done, ',' order by id) from public.work_items where component_id = $1`,
+            [COMP.en1Ops],
+          );
+          return check(
+            gone === 0 && items === `${ITEM.opsRunbook}:false,${ITEM.opsTraining}:true`,
+            `left after remove ${gone}; restored ${items}`,
+          );
+        },
+      },
+      {
+        who: "dana",
+        tries: "remove a component (she only owns Tech)",
+        expect: "blocked",
+        run: write(`select public.remove_component($1, null)`, [COMP.en1Tech]),
+      },
+      {
+        who: "christina",
+        tries: "move a component's work items into another capsule",
+        expect: "blocked",
+        run: write(`select public.remove_component($1, $2)`, [COMP.en1Ops, COMP.en2Tech]),
+      },
+      {
+        who: "dana",
+        tries: "put back a component on a capsule she doesn't own",
+        expect: "blocked",
+        run: write(`select public.restore_component($1::jsonb)`, [
+          JSON.stringify({
+            component: {
+              id: COMP.en1Sales,
+              org_id: ORG.acme,
+              capsule_id: CAPSULE.en1,
+              component_type_id: TYPE.sales,
+            },
+            collaborators: [],
+            items: [],
+          }),
+        ]),
+      },
+    ],
+  },
 ];
 
 const results: { group: string; who: string; tries: string; expect: Expect; got: Expect }[] = [];
