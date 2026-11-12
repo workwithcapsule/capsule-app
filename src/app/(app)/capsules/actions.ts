@@ -167,3 +167,51 @@ export async function deleteWorkItem(id: string): Promise<Result> {
   if (data?.length) refresh();
   return data?.length ? { ok: true } : { ok: false, error: NOT_ALLOWED };
 }
+
+// Adding and removing components (capsule owner) --------------------------------
+
+export async function addComponent(input: {
+  orgId: string;
+  capsuleId: string;
+  componentTypeId: string;
+  position: number;
+}): Promise<Result<{ id: string }>> {
+  const { supabase } = await db();
+  const { data, error } = await supabase
+    .from("components")
+    .insert({
+      org_id: input.orgId,
+      capsule_id: input.capsuleId,
+      component_type_id: input.componentTypeId,
+      position: input.position,
+    })
+    .select("id")
+    .single();
+  if (error)
+    return {
+      ok: false,
+      error: error.code === "23505" ? "That component is already in this capsule." : explain(error),
+    };
+  refresh();
+  return { ok: true, data: { id: data.id } };
+}
+
+/** Removes a component; its work items move to `moveTo` or are removed too. Returns what Undo needs. */
+export async function removeComponent(id: string, moveTo: string | null): Promise<Result<unknown>> {
+  const { supabase } = await db();
+  const { data, error } = await supabase.rpc("remove_component", {
+    p_component: id,
+    p_move_to: moveTo,
+  });
+  if (error) return { ok: false, error: explain(error) };
+  refresh();
+  return { ok: true, data };
+}
+
+export async function restoreComponent(snapshot: unknown): Promise<Result> {
+  const { supabase } = await db();
+  const { error } = await supabase.rpc("restore_component", { p_snapshot: snapshot });
+  if (error) return { ok: false, error: explain(error) };
+  refresh();
+  return { ok: true };
+}

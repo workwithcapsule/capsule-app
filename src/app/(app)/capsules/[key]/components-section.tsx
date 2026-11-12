@@ -1,18 +1,41 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarBlank, Check, Plus, User, X } from "@phosphor-icons/react";
+import {
+  CalendarBlank,
+  Check,
+  DotsThree,
+  PencilSimple,
+  Plus,
+  User,
+  X,
+} from "@phosphor-icons/react";
 import { Avatar } from "@/components/avatar";
 import { EditableText } from "@/components/editable-text";
 import { DateField, PersonPicker, StatusPicker } from "@/components/pickers";
 import { StatusPill } from "@/components/status-pill";
 import { useToast } from "@/components/toaster";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { COMPONENT_COLOR_CLASSES, STATUS_META, type Status } from "@/lib/design";
 import { fmtDate } from "@/lib/dates";
 import type { CapsuleComponent, CapsuleData, Permissions, WorkItem } from "@/lib/capsule-types";
 import { cn } from "@/lib/utils";
-import { addWorkItem, deleteWorkItem, updateComponent, updateWorkItem } from "../actions";
+import {
+  addComponent,
+  addWorkItem,
+  deleteWorkItem,
+  removeComponent,
+  restoreComponent,
+  updateComponent,
+  updateWorkItem,
+} from "../actions";
 import type { useCapsule } from "./use-capsule";
 
 type Change = ReturnType<typeof useCapsule>["change"];
@@ -56,23 +79,95 @@ export function ComponentsSection({
   const { mine, others } = orderComponents(view);
   const ordered = [...mine, ...others];
   const [selected, setSelected] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
   const current = ordered.find((k) => k.id === selected) ?? ordered[0] ?? null;
+  const present = new Set(view.components.map((k) => k.typeId));
+  const addable = view.componentTypes.filter((t) => !present.has(t.id));
+  const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
+
+  function add(typeId: string) {
+    const t = view.componentTypes.find((x) => x.id === typeId)!;
+    change(
+      [],
+      () =>
+        addComponent({
+          orgId: view.capsule.orgId,
+          capsuleId: view.capsule.id,
+          componentTypeId: typeId,
+          position: view.components.length,
+        }),
+      {
+        message: `Added ${t.name}.`,
+        undo: (data) => ({ op: [], save: () => removeComponent(data!.id, null) }),
+      },
+    );
+  }
+
+  function remove(k: CapsuleComponent, moveTo: string | null) {
+    const count = view.items.filter((i) => i.componentId === k.id).length;
+    const target = view.components.find((c) => c.id === moveTo);
+    setRemoving(null);
+    if (selected === k.id) setSelected(null);
+    change([], () => removeComponent(k.id, moveTo), {
+      message: `Removed ${k.name}${count ? ` · ${plural(count, "work item")} ${target ? `moved to ${target.name}` : "removed too"}` : ""}.`,
+      undo: (snapshot) => ({ op: [], save: () => restoreComponent(snapshot) }),
+    });
+  }
+
+  const removingComp = view.components.find((k) => k.id === removing) ?? null;
 
   return (
     <section aria-labelledby="comps-h" className="flex flex-col gap-3">
-      <h2 id="comps-h" className="text-base leading-6 font-semibold">
-        Components
-      </h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="comps-h" className="text-base leading-6 font-semibold">
+          Components
+        </h2>
+        {perms.isOwner &&
+          (editing ? (
+            <span className="flex items-center gap-2.5">
+              <span className="text-[13px] text-muted-foreground">Editing components</span>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setEditing(false);
+                  setRemoving(null);
+                }}
+              >
+                Done
+              </Button>
+            </span>
+          ) : (
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger
+                aria-label="Component options"
+                className="inline-flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-subtle hover:text-foreground"
+              >
+                <DotsThree size={18} weight="bold" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[200px]">
+                <DropdownMenuItem onSelect={() => setEditing(true)}>
+                  <PencilSimple size={16} />
+                  Edit components
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ))}
+      </div>
       <div className="rounded-2xl border border-border bg-surface shadow-card">
-        {ordered.length > 0 && (
+        {(ordered.length > 0 || editing) && (
           <div className="flex items-end gap-1 border-b border-divider px-2.5 pt-2">
-            <div role="tablist" aria-label="Components" className="flex flex-wrap items-end gap-1">
+            <div
+              role="tablist"
+              aria-label="Components"
+              className="flex flex-1 flex-wrap items-end gap-1"
+            >
               {ordered.map((k, i) => {
                 const isMine = mine.includes(k);
                 const on = current?.id === k.id;
                 const divider = i === mine.length && mine.length > 0;
                 return (
-                  <span key={k.id} className="flex items-end">
+                  <span key={k.id} className="relative flex items-end">
                     {divider && (
                       <span
                         aria-hidden="true"
@@ -90,6 +185,7 @@ export function ComponentsSection({
                         "group relative h-10 flex-none rounded-t-lg border-b-2 border-transparent px-[18px] text-[13px] font-medium whitespace-nowrap text-muted-foreground hover:text-foreground",
                         isMine && "bg-subtle",
                         on && "font-semibold text-foreground",
+                        editing && "pr-[34px]",
                       )}
                       style={on ? { borderBottomColor: `var(--${k.color}-fg)` } : undefined}
                     >
@@ -107,19 +203,143 @@ export function ComponentsSection({
                         {isMine ? ", you’re on this" : ""}
                       </span>
                     </button>
+                    {editing && (
+                      <button
+                        type="button"
+                        aria-label={`Remove ${k.name}`}
+                        title={`Remove ${k.name}`}
+                        onClick={() => {
+                          const count = view.items.filter((x) => x.componentId === k.id).length;
+                          if (count) {
+                            setSelected(k.id);
+                            setRemoving(k.id);
+                          } else remove(k, null);
+                        }}
+                        className="absolute top-1/2 right-2 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-border hover:text-foreground"
+                      >
+                        <X size={10} weight="bold" />
+                      </button>
+                    )}
                   </span>
                 );
               })}
             </div>
+            {editing && (
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="quiet" className="mb-1.5 flex-none pr-3 pl-2">
+                    <Plus size={14} />
+                    Add component
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[300px]">
+                  <DropdownMenuLabel>Your org’s components</DropdownMenuLabel>
+                  {addable.length ? (
+                    addable.map((t) => (
+                      <DropdownMenuItem key={t.id} className="h-10" onSelect={() => add(t.id)}>
+                        <span
+                          className={cn(
+                            "inline-flex h-5 flex-none items-center rounded-md px-[7px] text-xs font-medium",
+                            COMPONENT_COLOR_CLASSES[t.color].tag,
+                          )}
+                        >
+                          {t.name}
+                        </span>
+                        <span className="flex-1 truncate text-xs text-muted-foreground">
+                          {t.description}
+                        </span>
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <p className="px-2.5 pt-1 pb-2 text-[13px] text-muted-foreground">
+                      Every component is already in this capsule.
+                    </p>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
+        )}
+        {removingComp && (
+          <RemoveTray
+            k={removingComp}
+            view={view}
+            onCancel={() => setRemoving(null)}
+            onRemove={(moveTo) => remove(removingComp, moveTo)}
+          />
         )}
         {current ? (
           <ComponentPanel key={current.id} view={view} perms={perms} change={change} k={current} />
         ) : (
-          <p className="p-5 text-[13px] text-muted-foreground">No components yet.</p>
+          <p className="p-5 text-[13px] text-muted-foreground">
+            No components yet.
+            {perms.isOwner ? " Use Edit components to add the parts of the work." : ""}
+          </p>
         )}
       </div>
     </section>
+  );
+}
+
+/** "Remove Tech? It has 3 work items. What should happen to them?" (prototype). */
+function RemoveTray({
+  k,
+  view,
+  onCancel,
+  onRemove,
+}: {
+  k: CapsuleComponent;
+  view: CapsuleData;
+  onCancel: () => void;
+  onRemove: (moveTo: string | null) => void;
+}) {
+  const targets = view.components.filter((c) => c.id !== k.id);
+  const [moveTo, setMoveTo] = useState(targets[0]?.id ?? "");
+  const count = view.items.filter((i) => i.componentId === k.id).length;
+  return (
+    <div
+      role="group"
+      aria-label={`Remove ${k.name}`}
+      className="mx-3 mt-3 flex flex-col gap-2.5 rounded-xl border border-border bg-bg p-3.5"
+    >
+      <span>
+        <b className="font-semibold">Remove {k.name}?</b>{" "}
+        <span className="text-muted-foreground">
+          It has {count} work item{count === 1 ? "" : "s"}. What should happen to{" "}
+          {count === 1 ? "it" : "them"}?
+        </span>
+      </span>
+      <div className="flex flex-wrap items-center gap-2">
+        {targets.length > 0 && (
+          <>
+            <label htmlFor="move-to" className="text-[13px] text-muted-foreground">
+              Move them to
+            </label>
+            <select
+              id="move-to"
+              value={moveTo}
+              onChange={(e) => setMoveTo(e.target.value)}
+              className="h-8 rounded-lg border border-border bg-surface px-2 text-[13px] outline-none focus:border-control"
+            >
+              {targets.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+            <Button variant="primary" onClick={() => onRemove(moveTo)}>
+              Move and remove
+            </Button>
+          </>
+        )}
+        <Button variant="secondary" onClick={() => onRemove(null)}>
+          Remove items too
+        </Button>
+        <Button variant="quiet" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </div>
   );
 }
 

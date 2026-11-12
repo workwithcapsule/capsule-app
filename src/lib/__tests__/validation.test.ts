@@ -66,3 +66,16 @@ describe("dates", () => {
     expect(daysUntil("2026-11-01", today)).toBe(-10);
   });
 });
+
+import { fmtRelative } from "../dates";
+
+describe("relative times", () => {
+  const now = new Date(2026, 10, 12, 15, 0);
+  it("reads like the prototype", () => {
+    expect(fmtRelative(new Date(2026, 10, 12, 14, 59, 30).toISOString(), now)).toBe("Just now");
+    expect(fmtRelative(new Date(2026, 10, 12, 14, 40).toISOString(), now)).toBe("20m ago");
+    expect(fmtRelative(new Date(2026, 10, 12, 9, 0).toISOString(), now)).toBe("6h ago");
+    expect(fmtRelative(new Date(2026, 10, 11, 18, 0).toISOString(), now)).toBe("Yesterday");
+    expect(fmtRelative(new Date(2026, 10, 3, 10, 0).toISOString(), now)).toBe("Nov 3");
+  });
+});
