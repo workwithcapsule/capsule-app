@@ -25,3 +25,9 @@ we go; tick items off in the pull request that does them.
 - [ ] In Supabase → Authentication → URL Configuration, change the Site URL to
   https://app.workwithcapsule.com and add it to Redirect URLs.
 - [ ] Approve each Founding Builders admin's email in `signup_approvals`.
+
+## Example data
+
+- [ ] Remove the examples (Example data page → Remove examples), then remove
+  the page itself (`src/app/(app)/dev/examples`, `src/lib/examples`) and the
+  `EXAMPLE_DATA_EMAILS` setting in Vercel.
