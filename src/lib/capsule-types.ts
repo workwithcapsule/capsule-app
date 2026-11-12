@@ -57,6 +57,8 @@ export type CapsuleData = {
   people: PersonRef[];
   componentTypes: ComponentType[];
   me: PersonRef;
+  /** People following the capsule, and since when (ISO timestamp). */
+  followers: { userId: string; since: string }[];
   /** The capsule's activity log, newest first (raw; see lib/activity.ts). */
   activity: ActivityEvent[];
 };

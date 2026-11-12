@@ -274,3 +274,35 @@ export async function restoreComment(input: {
 }): Promise<Result> {
   return markComment("comment_restored", input);
 }
+
+// Following ---------------------------------------------------------------------
+
+/** `since` is only set by Undo after unfollowing, so the original date is kept. */
+export async function followCapsule(input: {
+  orgId: string;
+  capsuleId: string;
+  since?: string;
+}): Promise<Result> {
+  const { supabase, userId } = await db();
+  const { error } = await supabase.from("followers").insert({
+    org_id: input.orgId,
+    capsule_id: input.capsuleId,
+    user_id: userId,
+    ...(input.since && { created_at: input.since }),
+  });
+  if (error && error.code !== "23505") return { ok: false, error: explain(error) };
+  refresh();
+  return { ok: true };
+}
+
+export async function unfollowCapsule(capsuleId: string): Promise<Result> {
+  const { supabase, userId } = await db();
+  const { error } = await supabase
+    .from("followers")
+    .delete()
+    .eq("capsule_id", capsuleId)
+    .eq("user_id", userId!);
+  if (error) return { ok: false, error: explain(error) };
+  refresh();
+  return { ok: true };
+}

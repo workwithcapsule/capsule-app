@@ -652,6 +652,45 @@ const groups: Group[] = [
           [ORG.acme, CAPSULE.en1, P.olga],
         ),
       },
+      {
+        who: "maya",
+        tries: "follow EN-1 (in the org, not involved)",
+        expect: "allowed",
+        run: write(
+          `insert into public.followers (org_id, capsule_id, user_id) values ($1, $2, $3)`,
+          [ORG.acme, CAPSULE.en1, P.maya],
+        ),
+      },
+      {
+        who: "maya",
+        tries: "see who follows EN-1 (the followers list)",
+        expect: "allowed",
+        run: read(`select 1 from public.followers where capsule_id = $1 and user_id = $2`, [
+          CAPSULE.en1,
+          P.bob,
+        ]),
+      },
+      {
+        who: "dana",
+        tries: "unfollow EN-1 on Bob's behalf",
+        expect: "blocked",
+        run: write(`delete from public.followers where capsule_id = $1 and user_id = $2`, [
+          CAPSULE.en1,
+          P.bob,
+        ]),
+      },
+      {
+        who: "olga",
+        tries: "see who follows an Acme capsule",
+        expect: "blocked",
+        run: read(`select 1 from public.followers where capsule_id = $1`, [CAPSULE.en1]),
+      },
+      {
+        who: "bob",
+        tries: "rename EN-1 while following it",
+        expect: "blocked",
+        run: write(`update public.capsules set name = 'Bob was here' where id = $1`, [CAPSULE.en1]),
+      },
     ],
   },
   {

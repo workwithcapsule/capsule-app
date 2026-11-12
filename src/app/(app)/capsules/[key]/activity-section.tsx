@@ -4,7 +4,14 @@ import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp } from "@phosphor-icons/react";
 import { Avatar } from "@/components/avatar";
 import { ComponentIcon } from "@/components/component-icon";
-import { buildFeed, describe, splitMentions, type FeedEntry } from "@/lib/activity";
+import {
+  buildFeed,
+  describe,
+  forFollowers,
+  kindLabel,
+  splitMentions,
+  type FeedEntry,
+} from "@/lib/activity";
 import type { CapsuleData, Permissions, PersonRef } from "@/lib/capsule-types";
 import { fmtRelative } from "@/lib/dates";
 import { COMPONENT_COLOR_CLASSES } from "@/lib/design";
@@ -14,7 +21,7 @@ import type { useCapsule } from "./use-capsule";
 
 type Change = ReturnType<typeof useCapsule>["change"];
 
-const SHOW = 8;
+const SHOW = { side: 8, follower: 6 };
 let pendingSeq = 0;
 
 /** Everyone who can be @mentioned: the capsule's team (design-decisions.md section 12). */
@@ -28,19 +35,30 @@ export function teamOf(view: CapsuleData): PersonRef[] {
   return view.people.filter((p) => ids.has(p.id));
 }
 
-/** The capsule's Activity feed and comment box (prototype side panel). */
+/**
+ * The capsule's Activity feed and comment box. "side" is the team's side
+ * panel; "follower" is the larger feed in the follower view, showing the
+ * changes a stakeholder cares about (design-decisions.md sections 4 and 14).
+ */
 export function ActivitySection({
   view,
   perms,
   change,
+  variant = "side",
 }: {
   view: CapsuleData;
   perms: Permissions;
   change: Change;
+  variant?: "side" | "follower";
 }) {
   const [all, setAll] = useState(false);
-  const feed = useMemo(() => buildFeed(view.activity), [view.activity]);
-  const shown = all ? feed : feed.slice(0, SHOW);
+  const big = variant === "follower";
+  const feed = useMemo(() => {
+    const entries = buildFeed(view.activity);
+    return big ? entries.filter(forFollowers) : entries;
+  }, [view.activity, big]);
+  const limit = SHOW[variant];
+  const shown = all ? feed : feed.slice(0, limit);
   const team = useMemo(() => teamOf(view), [view]);
 
   function remove(e: FeedEntry) {
@@ -67,11 +85,16 @@ export function ActivitySection({
         Activity
       </h2>
       {feed.length > 0 ? (
-        <ol className="rounded-2xl border border-border bg-surface px-4 py-1 shadow-card">
+        <ol
+          className={cn(
+            "rounded-2xl border border-border bg-surface py-1 shadow-card",
+            big ? "px-5" : "px-4",
+          )}
+        >
           {shown.map((e) => (
-            <Row key={e.id} e={e} view={view} team={team} onDelete={() => remove(e)} />
+            <Row key={e.id} e={e} view={view} team={team} big={big} onDelete={() => remove(e)} />
           ))}
-          {feed.length > SHOW && (
+          {feed.length > limit && (
             <li className="py-3">
               <button
                 type="button"
@@ -85,7 +108,9 @@ export function ActivitySection({
         </ol>
       ) : (
         <p className="rounded-2xl border border-border bg-surface p-4 text-[13px] text-muted-foreground shadow-card">
-          Changes and comments on this capsule will show up here.
+          {big
+            ? "Date changes, status changes and comments on this capsule will show up here."
+            : "Changes and comments on this capsule will show up here."}
         </p>
       )}
       {perms.onTeam && <CommentBox view={view} team={team} change={change} />}
@@ -97,11 +122,13 @@ function Row({
   e,
   view,
   team,
+  big,
   onDelete,
 }: {
   e: FeedEntry;
   view: CapsuleData;
   team: PersonRef[];
+  big: boolean;
   onDelete: () => void;
 }) {
   const actor = view.people.find((p) => p.id === e.actorId);
@@ -117,13 +144,19 @@ function Row({
   return (
     <li
       className={cn(
-        "flex items-start gap-2.5 border-b border-divider py-3 last:border-b-0",
+        "flex items-start border-b border-divider last:border-b-0",
+        big ? "gap-3 py-3.5" : "gap-2.5 py-3",
         pending && "opacity-60",
       )}
     >
-      <Avatar name={actor?.name ?? name} initials={actor?.initials ?? "?"} size={24} me={isMe} />
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <p className="m-0 text-[13px] leading-[18px] break-words">
+      <Avatar
+        name={actor?.name ?? name}
+        initials={actor?.initials ?? "?"}
+        size={big ? 28 : 24}
+        me={isMe}
+      />
+      <div className={cn("flex min-w-0 flex-1 flex-col", big ? "gap-1" : "gap-0.5")}>
+        <p className={cn("m-0 break-words", big ? "text-sm" : "text-[13px] leading-[18px]")}>
           <b className="font-semibold">{name}</b>{" "}
           {e.kind === "comment"
             ? splitMentions(text, team).map((part, i) =>
@@ -141,6 +174,7 @@ function Row({
         </p>
         <span className="flex flex-wrap items-center gap-1.5 text-xs leading-4 text-muted-foreground">
           <ComponentTag view={view} e={e} />
+          {big && <span>{kindLabel(e)}</span>}
           <span suppressHydrationWarning>{pending ? "Posting…" : fmtRelative(e.at)}</span>
           {e.kind === "comment" && isMe && !pending && (
             <>

@@ -12,6 +12,7 @@ import { STATUS_META } from "@/lib/design";
 import { fmtDate } from "@/lib/dates";
 import type { CapsuleData, Permissions } from "@/lib/capsule-types";
 import { updateCapsule } from "../actions";
+import { FollowButton, FollowersPill } from "./follow-controls";
 import type { useCapsule } from "./use-capsule";
 
 type Change = ReturnType<typeof useCapsule>["change"];
@@ -63,11 +64,6 @@ export function CapsuleHeader({
           <CaretRight size={12} aria-hidden="true" />
           <span className="font-mono text-xs">{c.key}</span>
         </nav>
-        {!perms.onTeam && (
-          <span className="inline-flex h-7 items-center rounded-full border border-dashed border-dash px-3 text-xs text-muted-foreground">
-            You can view this capsule
-          </span>
-        )}
       </div>
 
       <div className="flex flex-wrap items-start gap-4">
@@ -105,23 +101,29 @@ export function CapsuleHeader({
             )
           )}
         </div>
-        {perms.onTeam && (
-          <Button
-            variant="secondary"
-            size="lg"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(window.location.href);
-                toast("Link copied.");
-              } catch {
-                toast("Couldn’t copy the link. Copy it from the address bar instead.");
-              }
-            }}
-          >
-            <LinkSimple size={14} />
-            Share
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <FollowersPill view={view} />
+          {/* Team members already see everything, so they get Share instead of Follow. */}
+          {perms.onTeam ? (
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(window.location.href);
+                  toast("Link copied.");
+                } catch {
+                  toast("Couldn’t copy the link. Copy it from the address bar instead.");
+                }
+              }}
+            >
+              <LinkSimple size={14} />
+              Share
+            </Button>
+          ) : (
+            <FollowButton view={view} change={change} />
+          )}
+        </div>
       </div>
 
       <dl className="flex flex-wrap items-center gap-x-7 gap-y-2.5 text-[13px]">

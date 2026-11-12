@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { COMPONENT_COLOR_CLASSES, STATUS_META, type Status } from "@/lib/design";
 import { fmtDate } from "@/lib/dates";
+import { permissionsFor } from "@/lib/capsule-types";
 import type { CapsuleComponent, CapsuleData, Permissions, WorkItem } from "@/lib/capsule-types";
 import { cn } from "@/lib/utils";
 import {
@@ -64,7 +65,18 @@ export function orderComponents(view: CapsuleData) {
   const sort = (a: CapsuleComponent, b: CapsuleComponent) =>
     RANK[a.status] - RANK[b.status] || (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999");
   const mine = view.components.filter(involved).sort(sort);
-  const others = view.components.filter((k) => !involved(k)).sort(sort);
+  // People not on the team see components by risk: blocked first, then the
+  // ones due soonest (overdue included), Done last (design-decisions.md section 4).
+  const risk = (a: CapsuleComponent, b: CapsuleComponent) => {
+    const tier = (k: CapsuleComponent) =>
+      k.status === "blocked" ? 0 : k.status === "done" ? 2 : 1;
+    return (
+      tier(a) - tier(b) || (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999") || sort(a, b)
+    );
+  };
+  const others = view.components
+    .filter((k) => !involved(k))
+    .sort(permissionsFor(view).onTeam ? sort : risk);
   return { mine, others };
 }
 
@@ -429,7 +441,7 @@ function ComponentPanel({
             k.goal && <p className="text-[15px] leading-[22px] font-medium">{k.goal}</p>
           )}
           <span className="text-[13px] leading-[18px] text-muted-foreground">
-            {items.length ? `${done} of ${items.length} work items done` : "No work items yet"}
+            {items.length ? `${done} of ${items.length} work items done` : "0 work items"}
           </span>
         </div>
         <span className="flex items-center gap-1.5">
