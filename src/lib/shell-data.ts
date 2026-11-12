@@ -1,16 +1,20 @@
 import "server-only";
+import { examplesAllowed } from "@/lib/examples/seed";
 import { createClient } from "@/lib/supabase/server";
 
 export type ShellData = {
   user: { name: string; initials: string; email: string };
   org: { name: string; isAdmin: boolean };
   spaces: { key: string; name: string }[];
+  /** Shows the Example data link (EXAMPLE_DATA_EMAILS). */
+  examples: boolean;
 };
 
 export const EMPTY_SHELL: ShellData = {
   user: { name: "", initials: "", email: "" },
   org: { name: "", isAdmin: false },
   spaces: [],
+  examples: false,
 };
 
 function initialsOf(name: string, email: string) {
@@ -51,6 +55,7 @@ export async function loadShellData(): Promise<ShellData> {
   return {
     user: { name: name || email, initials: initialsOf(name, email), email },
     org: { name: org?.name ?? "", isAdmin: membership?.role === "admin" },
+    examples: examplesAllowed(email),
     spaces: (spaces ?? [])
       .map((r) => r.spaces as unknown as { name: string; key_prefix: string } | null)
       .filter((s): s is { name: string; key_prefix: string } => Boolean(s))

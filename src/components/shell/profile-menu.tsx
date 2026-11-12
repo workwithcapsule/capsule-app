@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { CaretUpDown, GearSix, Monitor, Moon, SignOut, Sun, UserPlus } from "@phosphor-icons/react";
+import {
+  CaretUpDown,
+  Flask,
+  GearSix,
+  Monitor,
+  Moon,
+  SignOut,
+  Sun,
+  UserPlus,
+} from "@phosphor-icons/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,11 +34,13 @@ export function ProfileMenu({
   user,
   orgName,
   isAdmin,
+  examples = false,
 }: {
   onNavigate?: () => void;
   user: ShellData["user"];
   orgName: string;
   isAdmin: boolean;
+  examples?: boolean;
 }) {
   const { theme, setTheme } = useTheme();
 
@@ -65,6 +76,14 @@ export function ProfileMenu({
             Settings
           </Link>
         </DropdownMenuItem>
+        {examples && (
+          <DropdownMenuItem asChild>
+            <Link href="/dev/examples" onClick={onNavigate}>
+              <Flask size={16} />
+              Example data
+            </Link>
+          </DropdownMenuItem>
+        )}
         {isAdmin && (
           <DropdownMenuItem asChild>
             <Link href="/invite" onClick={onNavigate}>
