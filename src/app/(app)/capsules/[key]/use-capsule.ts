@@ -3,7 +3,7 @@
 import { useOptimistic, useTransition } from "react";
 import { useToast } from "@/components/toaster";
 import type { ActivityEvent } from "@/lib/activity";
-import type { CapsuleComponent, CapsuleData, WorkItem } from "@/lib/capsule-types";
+import type { Attachment, CapsuleComponent, CapsuleData, WorkItem } from "@/lib/capsule-types";
 import type { Result } from "../actions";
 
 /*
@@ -22,7 +22,9 @@ export type Op =
   | { type: "removeCollaborator"; componentId: string; userId: string }
   | { type: "addEvent"; event: ActivityEvent }
   | { type: "follow"; userId: string; since: string }
-  | { type: "unfollow"; userId: string };
+  | { type: "unfollow"; userId: string }
+  | { type: "addAttachment"; attachment: Attachment }
+  | { type: "removeAttachment"; id: string };
 
 function apply(state: CapsuleData, op: Op): CapsuleData {
   switch (op.type) {
@@ -57,6 +59,10 @@ function apply(state: CapsuleData, op: Op): CapsuleData {
             : c,
         ),
       };
+    case "addAttachment":
+      return { ...state, attachments: [...state.attachments, op.attachment] };
+    case "removeAttachment":
+      return { ...state, attachments: state.attachments.filter((a) => a.id !== op.id) };
     case "follow":
       return {
         ...state,

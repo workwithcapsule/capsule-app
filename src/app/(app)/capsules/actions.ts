@@ -306,3 +306,82 @@ export async function unfollowCapsule(capsuleId: string): Promise<Result> {
   refresh();
   return { ok: true };
 }
+
+// Attachments (step 10) -------------------------------------------------------
+
+type NewAttachment = { orgId: string; capsuleId: string; name: string } & (
+  | { kind: "link"; url: string; linkType: string }
+  | { kind: "file"; storagePath: string; sizeBytes: number; mimeType: string | null }
+);
+
+export async function addAttachment(input: NewAttachment): Promise<Result<{ id: string }>> {
+  const name = input.name.trim().slice(0, 300);
+  if (!name) return { ok: false, error: "Give it a name." };
+  if (input.kind === "link" && !/^https?:\/\//i.test(input.url))
+    return { ok: false, error: "That doesn’t look like a link." };
+  const { supabase, userId } = await db();
+  const { data, error } = await supabase
+    .from("attachments")
+    .insert({
+      org_id: input.orgId,
+      capsule_id: input.capsuleId,
+      kind: input.kind,
+      name,
+      added_by: userId,
+      ...(input.kind === "link"
+        ? { url: input.url, link_type: input.linkType }
+        : {
+            storage_path: input.storagePath,
+            size_bytes: input.sizeBytes,
+            mime_type: input.mimeType,
+          }),
+    })
+    .select("id")
+    .single();
+  if (error)
+    return {
+      ok: false,
+      error: error.code === "23505" ? "That link is already attached." : explain(error),
+    };
+  refresh();
+  return { ok: true, data: { id: data.id } };
+}
+
+/** Removing is a soft delete, so Undo (restoreAttachment) can bring it back. */
+export async function removeAttachment(id: string): Promise<Result> {
+  const { supabase } = await db();
+  const { data, error } = await supabase
+    .from("attachments")
+    .update({ removed_at: new Date().toISOString() })
+    .eq("id", id)
+    .select("id");
+  if (error) return { ok: false, error: explain(error) };
+  if (data?.length) refresh();
+  return data?.length ? { ok: true } : { ok: false, error: NOT_ALLOWED };
+}
+
+export async function restoreAttachment(id: string): Promise<Result> {
+  const { supabase } = await db();
+  const { data, error } = await supabase
+    .from("attachments")
+    .update({ removed_at: null })
+    .eq("id", id)
+    .select("id");
+  if (error)
+    return {
+      ok: false,
+      error: error.code === "23505" ? "That link was attached again meanwhile." : explain(error),
+    };
+  if (data?.length) refresh();
+  return data?.length ? { ok: true } : { ok: false, error: NOT_ALLOWED };
+}
+
+/** A private link to an attached file, valid for 5 minutes. */
+export async function fileLink(storagePath: string): Promise<Result<{ url: string }>> {
+  const { supabase } = await db();
+  const { data, error } = await supabase.storage
+    .from("attachments")
+    .createSignedUrl(storagePath, 300);
+  if (error || !data) return { ok: false, error: "Couldn’t open that file. Try again." };
+  return { ok: true, data: { url: data.signedUrl } };
+}

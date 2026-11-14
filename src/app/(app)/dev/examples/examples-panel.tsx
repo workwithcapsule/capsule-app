@@ -23,9 +23,10 @@ const HOME =
 
 const ROLES: Record<string, string> = {
   "EX-1":
-    "You own it: teammates on components, items assigned to you, a blocked component, and a comment that @mentions you.",
+    "You own it: teammates on components, items assigned to you, a blocked component, a comment that @mentions you, and attachments (a Google Doc, a Figma file and a PDF you can open).",
   "EX-2": "You work on it: Dana owns it, you own one component and have an item.",
-  "EX-3": "You follow it: the follower view, its filtered Activity and “+1 this week”.",
+  "EX-3":
+    "You follow it: the follower view, its filtered Activity, “+1 this week” and a read-only attachment.",
   "EX-4": "You can see it but aren’t on it: the + Follow button.",
 };
 

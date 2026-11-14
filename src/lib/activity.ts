@@ -37,6 +37,8 @@ const CANCELS: Record<string, string[]> = {
   item_added: ["item_deleted"],
   collaborator_removed: ["collaborator_added"],
   collaborator_added: ["collaborator_removed"],
+  attachment_removed: ["attachment_added"],
+  attachment_restored: ["attachment_removed"],
 };
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
@@ -45,6 +47,7 @@ const str = (v: unknown) => (typeof v === "string" ? v : "");
 function target(e: ActivityEvent): string {
   const d = e.data;
   if (e.kind.startsWith("item_")) return `item:${str(d.item_id)}`;
+  if (e.kind.startsWith("attachment_")) return `attachment:${str(d.attachment_id)}`;
   if (e.kind.startsWith("collaborator_")) return `collab:${str(d.component_id)}:${str(d.user_id)}`;
   if (e.kind.startsWith("component_")) return `component:${str(d.component_id)}`;
   return "capsule";
@@ -236,6 +239,12 @@ export function describe(e: FeedEntry, ctx: DescribeContext): string {
       return `added ${person(d.user_id)} to ${comp}`;
     case "collaborator_removed":
       return `removed ${person(d.user_id)} from ${comp}`;
+    case "attachment_added":
+      return `attached ${quote(d.name)}`;
+    case "attachment_removed":
+      return `removed the attachment ${quote(d.name)}`;
+    case "attachment_restored":
+      return `put back the attachment ${quote(d.name)}`;
     case "comment":
       return str(d.body);
   }
@@ -292,6 +301,9 @@ export function forFollowers(e: FeedEntry): boolean {
     case "component_added":
     case "component_removed":
     case "component_restored":
+    case "attachment_added":
+    case "attachment_removed":
+    case "attachment_restored":
       return true;
     case "capsule_changed":
       return ["status", "launch_date", "date_type"].includes(str(e.data.field));
@@ -309,7 +321,12 @@ export function kindLabel(e: FeedEntry): string {
     return "Date change";
   if (e.kind === "component_changed" && field === "status" && e.to === "done") return "Milestone";
   if (field === "status") return "Status change";
-  if (e.kind.startsWith("component_") || e.kind === "capsule_created") return "Scope change";
+  if (
+    e.kind.startsWith("component_") ||
+    e.kind.startsWith("attachment_") ||
+    e.kind === "capsule_created"
+  )
+    return "Scope change";
   if (e.kind.startsWith("item_")) return "Work item";
   if (e.kind.startsWith("collaborator_")) return "Team change";
   return "Update";

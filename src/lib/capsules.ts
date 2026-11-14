@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { ComponentColor, Status } from "@/lib/design";
+import type { LinkType } from "@/lib/attachments";
 import { sortAttention, toAttentionRow } from "@/lib/attention";
 import type { CapsuleData, PersonRef } from "@/lib/capsule-types";
 
@@ -52,45 +53,60 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
     .maybeSingle();
   if (!cap) return null;
 
-  const [components, items, collaborators, people, types, events, followers, attention] =
-    await Promise.all([
-      supabase
-        .from("components")
-        .select(
-          "id, component_type_id, owner_id, due_date, status, goal, position, component_types(name, color, icon)",
-        )
-        .eq("capsule_id", cap.id)
-        .order("position"),
-      supabase
-        .from("work_items")
-        .select("id, component_id, title, done, assignee_id, created_by, position, created_at")
-        .eq("capsule_id", cap.id)
-        .order("position")
-        .order("created_at"),
-      supabase
-        .from("component_people")
-        .select("component_id, user_id, source")
-        .eq("capsule_id", cap.id),
-      loadPeople(cap.org_id),
-      supabase
-        .from("component_types")
-        .select("id, name, color, icon, description")
-        .eq("org_id", cap.org_id)
-        .is("archived_at", null)
-        .order("position"),
-      supabase
-        .from("events")
-        .select("id, kind, actor_user_id, data, created_at")
-        .eq("capsule_id", cap.id)
-        .order("created_at", { ascending: false })
-        .limit(500),
-      supabase
-        .from("followers")
-        .select("user_id, created_at")
-        .eq("capsule_id", cap.id)
-        .order("created_at", { ascending: false }),
-      supabase.rpc("needs_attention").eq("capsule_id", cap.id),
-    ]);
+  const [
+    components,
+    items,
+    collaborators,
+    people,
+    types,
+    events,
+    followers,
+    attention,
+    attachments,
+  ] = await Promise.all([
+    supabase
+      .from("components")
+      .select(
+        "id, component_type_id, owner_id, due_date, status, goal, position, component_types(name, color, icon)",
+      )
+      .eq("capsule_id", cap.id)
+      .order("position"),
+    supabase
+      .from("work_items")
+      .select("id, component_id, title, done, assignee_id, created_by, position, created_at")
+      .eq("capsule_id", cap.id)
+      .order("position")
+      .order("created_at"),
+    supabase
+      .from("component_people")
+      .select("component_id, user_id, source")
+      .eq("capsule_id", cap.id),
+    loadPeople(cap.org_id),
+    supabase
+      .from("component_types")
+      .select("id, name, color, icon, description")
+      .eq("org_id", cap.org_id)
+      .is("archived_at", null)
+      .order("position"),
+    supabase
+      .from("events")
+      .select("id, kind, actor_user_id, data, created_at")
+      .eq("capsule_id", cap.id)
+      .order("created_at", { ascending: false })
+      .limit(500),
+    supabase
+      .from("followers")
+      .select("user_id, created_at")
+      .eq("capsule_id", cap.id)
+      .order("created_at", { ascending: false }),
+    supabase.rpc("needs_attention").eq("capsule_id", cap.id),
+    supabase
+      .from("attachments")
+      .select("id, kind, name, url, storage_path, link_type, size_bytes, added_by, created_at")
+      .eq("capsule_id", cap.id)
+      .is("removed_at", null)
+      .order("created_at"),
+  ]);
 
   const me = people.find((p) => p.id === userId) ?? { id: userId, name: "You", initials: "Y" };
 
@@ -141,6 +157,17 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
     people,
     componentTypes: (types.data ?? []).map((t) => ({ ...t, color: t.color as ComponentColor })),
     me,
+    attachments: (attachments.data ?? []).map((a) => ({
+      id: a.id,
+      kind: a.kind as "file" | "link",
+      name: a.name,
+      url: a.url,
+      storagePath: a.storage_path,
+      linkType: a.link_type as LinkType | null,
+      sizeBytes: a.size_bytes,
+      addedBy: a.added_by,
+      createdAt: a.created_at,
+    })),
     needsMe: sortAttention(
       ((attention.data ?? []) as Parameters<typeof toAttentionRow>[0][]).map(toAttentionRow),
     ),
