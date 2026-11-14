@@ -138,6 +138,12 @@ export function NewCapsuleForm({
       })),
     });
   const [suggested] = useState(snapshot);
+  // Where each suggested component sat in Claude's answer. Only these take
+  // part in Orbit's reveal and the "thinking" indicator; components you add
+  // yourself show their pickers straight away.
+  const [suggestedOrder] = useState(
+    () => new Map((initial?.components ?? []).map((c, i) => [c.typeId, i])),
+  );
 
   // Leaving with something entered asks first (answer 9: Discard or Keep editing).
   useEffect(() => {
@@ -361,14 +367,15 @@ export function NewCapsuleForm({
         </div>
         {components.length > 0 && (
           <ul className="flex flex-col gap-3">
-            {components.map((c, index) => {
+            {components.map((c) => {
               const t = typeById.get(c.typeId)!;
-              const hidden = review ? index >= review.revealed : false;
-              const thinking = review ? index >= review.resolved : false;
+              const order = suggestedOrder.get(c.typeId);
+              const hidden = review && order !== undefined ? order >= review.revealed : false;
+              const thinking = review && order !== undefined ? order >= review.resolved : false;
               return (
                 <li
                   key={c.typeId}
-                  data-shape-index={index}
+                  data-shape-index={order}
                   aria-hidden={hidden || undefined}
                   className={cn(
                     "flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-card transition-opacity duration-300 motion-reduce:transition-none",

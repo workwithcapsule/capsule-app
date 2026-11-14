@@ -107,6 +107,9 @@ export async function shapeCapsule(description: string): Promise<ShapeResult> {
 
   const { data: requestId, error: startError } = await supabase.rpc("start_shaping");
   if (startError) {
+    // Shows in Vercel's runtime logs (a missing database update showed up only
+    // as the general message once).
+    console.error("[shaping] couldn't start a request:", startError.code, startError.message);
     if (startError.hint === "shaping_limit" || startError.message.includes("Daily shaping limit")) {
       return {
         ok: false,
@@ -173,6 +176,7 @@ export async function shapeCapsule(description: string): Promise<ShapeResult> {
         return { ok: true, draft, requestId: requestId as string };
       } catch (e) {
         lastError = e instanceof ShapingError ? e.message : (e as Error).name || "Error";
+        console.error("[shaping] attempt failed:", lastError, e instanceof ShapingError ? "" : e);
         // A timeout or a declined description won't get better on a retry.
         if (signal.aborted || !(e instanceof ShapingError) || /declined|Timed out/.test(lastError))
           break;
@@ -186,7 +190,8 @@ export async function shapeCapsule(description: string): Promise<ShapeResult> {
       output_tokens: tokens.output || null,
     });
     return { ok: false, kind: "failed", error: FAILED };
-  } catch {
+  } catch (e) {
+    console.error("[shaping] unexpected error:", e);
     await finish({ status: "failed", error: "Unexpected error" });
     return { ok: false, kind: "failed", error: FAILED };
   }
