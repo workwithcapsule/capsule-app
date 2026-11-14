@@ -4,6 +4,7 @@ import { Check, Plus } from "@phosphor-icons/react";
 import { SignOutButton } from "@/components/centered-page";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Wordmark } from "@/components/logo";
 
 /*
  * Pieces shared by the two first-run flows: onboarding (first person in an
@@ -143,7 +144,7 @@ export function SetupFrame({
   return (
     <div className="flex min-h-dvh flex-col laptop:flex-row">
       <aside className="sticky top-0 hidden h-dvh w-[248px] flex-none flex-col gap-4 border-r border-border px-3 pt-5 pb-4 laptop:flex">
-        <span className="px-2.5 text-lg leading-6 font-semibold tracking-[-0.02em]">Capsule</span>
+        <Wordmark className="px-2.5" />
         <p className="mt-3 px-2.5 text-xs leading-4 font-medium text-muted-foreground">{label}</p>
         <nav aria-label="Setup steps" className="flex flex-col gap-0.5">
           {steps.map((name, i) => {
@@ -181,7 +182,7 @@ export function SetupFrame({
       </aside>
 
       <header className="flex h-[57px] items-center justify-between border-b border-border px-4 laptop:hidden">
-        <span className="px-2.5 text-lg leading-6 font-semibold tracking-[-0.02em]">Capsule</span>
+        <Wordmark className="px-2.5" />
         <span className="text-xs text-muted-foreground">
           Step {step} of {steps.length} · {steps[step - 1]}
         </span>

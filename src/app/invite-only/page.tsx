@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { CenteredPage, SignOutButton } from "@/components/centered-page";
 import { Button } from "@/components/ui/button";
+import { Wordmark } from "@/components/logo";
 
 export const metadata: Metadata = { title: "Invite-only for now" };
 
 export default function InviteOnlyPage() {
   return (
     <CenteredPage>
-      <span className="text-lg leading-6 font-semibold tracking-[-0.02em]">Capsule</span>
+      <Wordmark />
       <div className="flex flex-col gap-2">
         <h1 className="text-[28px] leading-[34px] font-semibold tracking-[-0.02em]">
           Capsule is invite-only for now

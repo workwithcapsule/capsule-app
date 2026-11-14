@@ -11,7 +11,7 @@ import {
   SquaresFour,
   X,
 } from "@phosphor-icons/react";
-import { CapsuleIcon } from "@/components/icons";
+import { CapsuleMark } from "@/components/logo";
 import { ProfileMenu } from "@/components/shell/profile-menu";
 import { cn } from "@/lib/utils";
 import type { ShellData } from "@/lib/shell-data";
@@ -133,7 +133,7 @@ export function SidebarContent({
           title="Capsules"
           className={cn(navLink, isOn("/capsules") && navOn)}
         >
-          <CapsuleIcon size={16} className="flex-none" />
+          <CapsuleMark width={16} />
           <span className={label}>Capsules</span>
         </Link>
       </nav>
