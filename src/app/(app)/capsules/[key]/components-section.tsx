@@ -84,14 +84,24 @@ export function ComponentsSection({
   view,
   perms,
   change,
+  focus,
 }: {
   view: CapsuleData;
   perms: Permissions;
   change: Change;
+  /** Opened from Home: select this component and highlight this item. */
+  focus?: { item: string | null; component: string | null };
 }) {
   const { mine, others } = orderComponents(view);
   const ordered = [...mine, ...others];
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(focus?.component ?? null);
+  // Follow a new ?item= or ?component= when it changes on the same page.
+  const focusKey = `${focus?.component}|${focus?.item}`;
+  const [seenFocus, setSeenFocus] = useState(focusKey);
+  if (focusKey !== seenFocus) {
+    setSeenFocus(focusKey);
+    if (focus?.component) setSelected(focus.component);
+  }
   const [editing, setEditing] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
   const current = ordered.find((k) => k.id === selected) ?? ordered[0] ?? null;
@@ -282,7 +292,14 @@ export function ComponentsSection({
           />
         )}
         {current ? (
-          <ComponentPanel key={current.id} view={view} perms={perms} change={change} k={current} />
+          <ComponentPanel
+            key={current.id}
+            view={view}
+            perms={perms}
+            change={change}
+            k={current}
+            focusItem={focus?.item ?? null}
+          />
         ) : (
           <p className="p-5 text-[13px] text-muted-foreground">
             No components yet.
@@ -361,11 +378,13 @@ function ComponentPanel({
   perms,
   change,
   k,
+  focusItem,
 }: {
   view: CapsuleData;
   perms: Permissions;
   change: Change;
   k: CapsuleComponent;
+  focusItem: string | null;
 }) {
   const toast = useToast();
   const canEdit = perms.editComponent(k.id);
@@ -531,6 +550,7 @@ function ComponentPanel({
                 perms={perms}
                 change={change}
                 componentName={k.name}
+                highlight={item.id === focusItem}
               />
             ))}
           </ul>
@@ -583,12 +603,14 @@ function WorkItemRow({
   perms,
   change,
   componentName,
+  highlight,
 }: {
   item: WorkItem;
   view: CapsuleData;
   perms: Permissions;
   change: Change;
   componentName: string;
+  highlight: boolean;
 }) {
   const toast = useToast();
   const temp = item.id.startsWith("temp-");
@@ -652,7 +674,13 @@ function WorkItemRow({
   }
 
   return (
-    <li className="group -mx-2 flex min-h-12 items-center gap-3 rounded-lg border-b border-divider px-2 py-1.5 hover:bg-hover">
+    <li
+      ref={highlight ? scrollToMe : undefined}
+      className={cn(
+        "group -mx-2 flex min-h-12 items-center gap-3 rounded-lg border-b border-divider px-2 py-1.5 hover:bg-hover",
+        highlight && "animate-hl",
+      )}
+    >
       {canComplete ? (
         <input
           type="checkbox"
@@ -738,4 +766,11 @@ function WorkItemRow({
       )}
     </li>
   );
+}
+
+/** Brings the item you opened from Home into view (instantly with reduced motion). */
+export function scrollToMe(el: HTMLElement | null) {
+  if (!el) return;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
 }

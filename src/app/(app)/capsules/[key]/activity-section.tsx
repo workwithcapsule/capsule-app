@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowUp } from "@phosphor-icons/react";
 import { Avatar } from "@/components/avatar";
 import { ComponentIcon } from "@/components/component-icon";
@@ -17,6 +18,7 @@ import { fmtRelative } from "@/lib/dates";
 import { COMPONENT_COLOR_CLASSES } from "@/lib/design";
 import { cn } from "@/lib/utils";
 import { deleteComment, postComment, restoreComment } from "../actions";
+import { scrollToMe } from "./components-section";
 import type { useCapsule } from "./use-capsule";
 
 type Change = ReturnType<typeof useCapsule>["change"];
@@ -53,6 +55,8 @@ export function ActivitySection({
 }) {
   const [all, setAll] = useState(false);
   const big = variant === "follower";
+  // Opened from an @mention on Home: bring Activity into view.
+  const fromMention = useSearchParams().get("activity") === "1";
   const feed = useMemo(() => {
     const entries = buildFeed(view.activity);
     return big ? entries.filter(forFollowers) : entries;
@@ -80,7 +84,11 @@ export function ActivitySection({
   }
 
   return (
-    <section aria-labelledby="act-h" className="flex flex-col gap-3">
+    <section
+      aria-labelledby="act-h"
+      ref={fromMention ? scrollToMe : undefined}
+      className="flex scroll-mt-6 flex-col gap-3"
+    >
       <h2 id="act-h" className="text-base leading-6 font-semibold">
         Activity
       </h2>

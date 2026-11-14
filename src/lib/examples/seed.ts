@@ -223,6 +223,7 @@ export async function seedExamples(admin: Admin, me: Me) {
             due_date: due === null ? null : dateIn(due),
             position,
             goal: goal ?? null,
+            created_at: ago(30),
           })
           .select("id")
           .single(),
@@ -242,6 +243,8 @@ export async function seedExamples(admin: Admin, me: Me) {
           done: done ?? false,
           position,
           created_by: me.id,
+          // Assigned a day ago, so Home shows when it arrived.
+          created_at: ago(26),
         })),
       ),
       "Adding work items",
@@ -283,9 +286,14 @@ export async function seedExamples(admin: Admin, me: Me) {
     );
     if (mentions.length) {
       await must(
-        admin
-          .from("mentions")
-          .insert(mentions.map((user_id) => ({ org_id: org, event_id: row.id, user_id }))),
+        admin.from("mentions").insert(
+          mentions.map((user_id) => ({
+            org_id: org,
+            event_id: row.id,
+            user_id,
+            created_at: ago(hoursAgo),
+          })),
+        ),
         "Adding a mention",
       );
     }
@@ -317,7 +325,7 @@ export async function seedExamples(admin: Admin, me: Me) {
     A,
     mate.dana,
     "in_progress",
-    14,
+    3, // due soon: your "Review the partner data model" shows as due soon on Home
     0,
     "The leaderboard API is live",
   );
@@ -399,7 +407,7 @@ export async function seedExamples(admin: Admin, me: Me) {
     B,
     me.id,
     "in_progress",
-    7,
+    -1, // overdue: shows first in your Needs your attention
     1,
     "Announcement approved and scheduled",
   );

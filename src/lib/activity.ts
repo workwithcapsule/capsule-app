@@ -310,5 +310,7 @@ export function kindLabel(e: FeedEntry): string {
   if (e.kind === "component_changed" && field === "status" && e.to === "done") return "Milestone";
   if (field === "status") return "Status change";
   if (e.kind.startsWith("component_") || e.kind === "capsule_created") return "Scope change";
+  if (e.kind.startsWith("item_")) return "Work item";
+  if (e.kind.startsWith("collaborator_")) return "Team change";
   return "Update";
 }

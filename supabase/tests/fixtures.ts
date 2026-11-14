@@ -191,6 +191,11 @@ insert into public.events (id, org_id, capsule_id, actor_user_id, kind, data) va
 insert into public.mentions (id, org_id, event_id, user_id) values
   ('${MENTION.danaInEn1}', '${ORG.acme}', '${EVENT.en1Comment}', '${P.dana}');
 
+-- Christina removed "Sales (you own it)" from her Needs your attention.
+insert into public.dismissals (org_id, user_id, capsule_id, kind, target_id, since)
+  select '${ORG.acme}', '${P.christina}', '${CAPSULE.en1}', 'component', id, created_at
+  from public.components where id = '${COMP.en1Sales}';
+
 insert into public.attachments (id, org_id, capsule_id, component_id, kind, name, url, link_type, added_by) values
   ('${ATTACHMENT.en1Figma}', '${ORG.acme}', '${CAPSULE.en1}', '${COMP.en1Tech}', 'link', 'Leaderboard designs',
    'https://www.figma.com/file/abc/leaderboard', 'figma', '${P.dana}'),

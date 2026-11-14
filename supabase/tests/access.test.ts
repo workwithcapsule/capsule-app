@@ -694,6 +694,164 @@ const groups: Group[] = [
     ],
   },
   {
+    title: "Home: Needs your attention",
+    cases: [
+      {
+        who: "jon",
+        tries: "see his own list: the work item assigned to him",
+        expect: "allowed",
+        run: async (db) => {
+          const rows = await value<string>(
+            db,
+            `select string_agg(kind || ':' || title, ',' order by kind, title) from public.needs_attention()`,
+          );
+          return check(rows === "item:Write the support runbook", String(rows));
+        },
+      },
+      {
+        who: "dana",
+        tries: "see her list: her item, her components and the @mention of her",
+        expect: "allowed",
+        run: async (db) => {
+          const rows = await value<string>(
+            db,
+            `select string_agg(kind || ':' || capsule_key || ':' || title, ',' order by kind, capsule_key, title)
+             from public.needs_attention()`,
+          );
+          return check(
+            rows ===
+              "component:EN-1:Tech,component:EN-2:Tech,item:EN-1:Build the leaderboard API,mention:EN-1:Partner leaderboard launch",
+            String(rows),
+          );
+        },
+      },
+      {
+        who: "christina",
+        tries: "see Operations (no owner, on her capsule) but not Sales, which she removed",
+        expect: "allowed",
+        run: async (db) => {
+          const rows = await value<string>(
+            db,
+            `select string_agg(kind || ':' || title, ',' order by kind, title) from public.needs_attention()`,
+          );
+          return check(rows === "no_owner:Operations", String(rows));
+        },
+      },
+      {
+        who: "bob",
+        tries: "have nothing in his list (he only follows)",
+        expect: "allowed",
+        run: async (db) => {
+          const n = await value<number>(db, `select count(*)::int from public.needs_attention()`);
+          return check(n === 0, `${n} rows`);
+        },
+      },
+      {
+        who: "dana",
+        tries: "answer her @mention by commenting, which clears it from her list",
+        expect: "allowed",
+        run: async (db) => {
+          await value(db, `select public.post_comment($1, 'Yes, Dec 1 works.', '{}')`, [
+            CAPSULE.en1,
+          ]);
+          const n = await value<number>(
+            db,
+            `select count(*)::int from public.needs_attention() where kind = 'mention'`,
+          );
+          return check(n === 0, `${n} mentions left`);
+        },
+      },
+      {
+        who: "dana",
+        tries:
+          "remove her work item from the list, then see it come back when it's handed to her again",
+        expect: "allowed",
+        run: async (db) => {
+          const since = await value<string>(
+            db,
+            `select since from public.needs_attention() where target_id = $1`,
+            [ITEM.techApi],
+          );
+          await attempt(
+            db,
+            `insert into public.dismissals (org_id, user_id, capsule_id, kind, target_id, since)
+             values ($1, $2, $3, 'item', $4, $5)`,
+            [ORG.acme, P.dana, CAPSULE.en1, ITEM.techApi, since],
+          );
+          const hidden = await value<number>(
+            db,
+            `select count(*)::int from public.needs_attention() where target_id = $1`,
+            [ITEM.techApi],
+          );
+          await attempt(db, `update public.work_items set assignee_id = null where id = $1`, [
+            ITEM.techApi,
+          ]);
+          await attempt(db, `update public.work_items set assignee_id = $2 where id = $1`, [
+            ITEM.techApi,
+            P.dana,
+          ]);
+          const back = await value<number>(
+            db,
+            `select count(*)::int from public.needs_attention() where target_id = $1`,
+            [ITEM.techApi],
+          );
+          return check(hidden === 0 && back === 1, `hidden ${hidden}; back ${back}`);
+        },
+      },
+      {
+        who: "christina",
+        tries: "undo her removal of Sales",
+        expect: "allowed",
+        run: write(`delete from public.dismissals where user_id = $1 and target_id = $2`, [
+          P.christina,
+          COMP.en1Sales,
+        ]),
+      },
+      {
+        who: "dana",
+        tries: "see what Christina removed from her list",
+        expect: "blocked",
+        run: read(`select 1 from public.dismissals where user_id = $1`, [P.christina]),
+      },
+      {
+        who: "dana",
+        tries: "undo Christina's removal for her",
+        expect: "blocked",
+        run: write(`delete from public.dismissals where user_id = $1`, [P.christina]),
+      },
+      {
+        who: "dana",
+        tries: "remove a row from Christina's list",
+        expect: "blocked",
+        run: write(
+          `insert into public.dismissals (org_id, user_id, capsule_id, kind, target_id, since)
+           values ($1, $2, $3, 'no_owner', $4, now())`,
+          [ORG.acme, P.christina, CAPSULE.en1, COMP.en1Ops],
+        ),
+      },
+      {
+        who: "olga",
+        tries: "file a removal against an Acme capsule",
+        expect: "blocked",
+        run: write(
+          `insert into public.dismissals (org_id, user_id, capsule_id, kind, target_id, since)
+           values ($1, $2, $3, 'item', $4, now())`,
+          [ORG.acme, P.olga, CAPSULE.en1, ITEM.techApi],
+        ),
+      },
+      {
+        who: "jon",
+        tries: "post a comment that claims to come from an AI agent (MCP)",
+        expect: "blocked",
+        run: write(
+          `insert into public.events (org_id, capsule_id, actor_user_id, kind, data, source, agent_client)
+           values ($1, $2, $3, 'comment', '{"body":"hi"}', 'mcp', 'Claude')`,
+          [ORG.acme, CAPSULE.en1, P.jon],
+        ),
+      },
+    ],
+  },
+  {
     title: "Spaces",
     cases: [
       {

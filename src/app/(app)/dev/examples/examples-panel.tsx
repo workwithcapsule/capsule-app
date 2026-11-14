@@ -9,6 +9,9 @@ import { deleteExamples, refreshExamples } from "./actions";
 type Status = { exists: boolean; capsules: { key: string; name: string }[] } | { error: string };
 
 /** What each example is for. Each build step adds to this list. */
+const HOME =
+  "Home: your Needs your attention gets an overdue item (EX-2), a due-soon item (EX-1), a component with no owner (EX-1), components you own and two @mentions. Activity today fills from all four.";
+
 const ROLES: Record<string, string> = {
   "EX-1":
     "You own it: teammates on components, items assigned to you, a blocked component, and a comment that @mentions you.",
@@ -73,6 +76,7 @@ export function ExamplesPanel({ status }: { status: Status }) {
           <h2 id="ex-h" className="text-base leading-6 font-semibold">
             The examples
           </h2>
+          <p className="text-[13px] text-muted-foreground">{HOME}</p>
           <ul className="rounded-2xl border border-border bg-surface shadow-card">
             {status.capsules.map((c) => (
               <li

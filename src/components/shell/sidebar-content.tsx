@@ -117,6 +117,14 @@ export function SidebarContent({
         >
           <House size={16} className="flex-none" />
           <span className={label}>Home</span>
+          {data.attention > 0 && (
+            <span
+              aria-label={`${data.attention} need your attention`}
+              className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-subtle px-1.5 text-[11px] font-semibold text-muted-foreground rail:hidden"
+            >
+              {data.attention}
+            </span>
+          )}
         </Link>
         <Link
           href="/capsules"
