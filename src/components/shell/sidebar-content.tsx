@@ -67,8 +67,9 @@ export function SidebarContent({
         <Link
           href="/"
           onClick={onNavigate}
-          className="flex items-center gap-2.5 px-2.5 py-0.5 text-lg leading-6 font-semibold tracking-[-0.02em] text-foreground no-underline rail:hidden"
+          className="flex items-center gap-2 px-2.5 py-0.5 text-lg leading-6 font-semibold tracking-[-0.02em] text-foreground no-underline rail:hidden"
         >
+          <CapsuleMark width={24} />
           Capsule
         </Link>
         <button
@@ -186,8 +187,9 @@ export function TopBar({ onOpen, open }: { onOpen: () => void; open: boolean }) 
     <header className="sticky top-0 z-50 flex h-[57px] flex-none items-center justify-between border-b border-border bg-bg px-4 laptop:hidden">
       <Link
         href="/"
-        className="px-2.5 text-lg leading-6 font-semibold tracking-[-0.02em] text-foreground no-underline"
+        className="flex items-center gap-2 px-2.5 text-lg leading-6 font-semibold tracking-[-0.02em] text-foreground no-underline"
       >
+        <CapsuleMark width={24} />
         Capsule
       </Link>
       <button
