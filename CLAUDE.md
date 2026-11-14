@@ -78,3 +78,4 @@ A feature is done when it:
 - is covered by access-rule tests where it touches data
 - passes type checks and lint, and is committed
 - sends no real email except to me while testing
+- has an example on the Example data page (`/dev/examples`), so I can test it from my own account without switching accounts. My check steps start with "Open Example data and click Refresh examples".

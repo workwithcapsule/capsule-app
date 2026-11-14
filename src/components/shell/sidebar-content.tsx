@@ -165,6 +165,7 @@ export function SidebarContent({
           user={data.user}
           orgName={data.org.name}
           isAdmin={data.org.isAdmin}
+          examples={data.examples}
         />
       </div>
     </div>
