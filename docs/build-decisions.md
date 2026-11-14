@@ -86,3 +86,8 @@ Answers Christina gave before the build started. These sit alongside `v1-scope.m
 42. **Orbit beads before Claude answers:** guessed from the words typed (as in the prototype) and colored right away, then corrected to the real components when the answer arrives.
 43. **"Start a capsule" on Home:** yes, as in the prototype; sending from Home goes straight into Orbit.
 44. **Model:** Claude Opus 5.5 at medium effort, set by `ANTHROPIC_MODEL` and `ANTHROPIC_EFFORT`. If a safety filter declines a description, Anthropic retries on a fallback model.
+
+## Step 10 answers (Nov. 14 2026)
+
+45. **Removed files:** the stored copy is kept, so Undo always works; removed attachments stop showing everywhere. Deleting stored copies of files removed more than 30 days ago is on the pre-launch list (V1 has no background job runner).
+46. **Component tags on attachments:** not in V1. The `component_id` column stays for later; the section shows no tags.
