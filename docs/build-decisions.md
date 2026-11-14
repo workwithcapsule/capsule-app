@@ -79,3 +79,10 @@ Answers Christina gave before the build started. These sit alongside `v1-scope.m
 38. **@mentions show on Home** as "Dana mentioned you in EX-1" rows in Needs your attention. They clear with X, or when you comment on that capsule.
 39. **Agent attribution groundwork:** the activity log gets `source` (app, api, mcp) and `agent_client` now; the agent UI comes with the MCP work after V1.
 40. **Multiple collaborators per work item** becomes a new **step 12**, before launch, together with a work item detail view and work item statuses.
+
+## Step 9 answers (Nov. 14 2026)
+
+41. **Shaping log and cap:** a new `shaping_requests` table records each shaping (who, org, model, tokens, time taken, and whether it was created, edited, discarded or failed). Each org can shape **30 capsules a day**; after that the Describe page says so and offers Fill in the fields.
+42. **Orbit beads before Claude answers:** guessed from the words typed (as in the prototype) and colored right away, then corrected to the real components when the answer arrives.
+43. **"Start a capsule" on Home:** yes, as in the prototype; sending from Home goes straight into Orbit.
+44. **Model:** Claude Opus 5.5 at medium effort, set by `ANTHROPIC_MODEL` and `ANTHROPIC_EFFORT`. If a safety filter declines a description, Anthropic retries on a fallback model.

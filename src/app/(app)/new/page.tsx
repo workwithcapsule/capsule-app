@@ -4,7 +4,8 @@ import { loadPeople } from "@/lib/capsules";
 import type { ComponentColor } from "@/lib/design";
 import { loadSpacesDirectory } from "@/lib/spaces";
 import { createClient } from "@/lib/supabase/server";
-import { NewCapsuleForm } from "./new-capsule-form";
+import { getProvider } from "@/lib/ai/provider";
+import { NewCapsuleFlow } from "./new-capsule-flow";
 
 export const metadata: Metadata = { title: "New capsule" };
 
@@ -27,14 +28,19 @@ async function Form({ searchParams }: { searchParams: PageProps<"/new">["searchP
     .sort((a, b) => Number(b.joined) - Number(a.joined) || a.name.localeCompare(b.name))
     .map((s) => ({ id: s.id, name: s.name, keyPrefix: s.keyPrefix, joined: s.joined }));
   const wanted = typeof params.space === "string" ? params.space.toUpperCase() : null;
+  const prompt = typeof params.prompt === "string" ? params.prompt.slice(0, 2000) : "";
 
   return (
-    <NewCapsuleForm
+    <NewCapsuleFlow
       spaces={spaces}
       people={people}
       types={(types ?? []).map((t) => ({ ...t, color: t.color as ComponentColor }))}
       me={directory.me}
       defaultSpaceId={spaces.find((s) => s.keyPrefix === wanted)?.id ?? null}
+      aiReady={getProvider() !== null}
+      initialPrompt={prompt}
+      autoStart={params.go === "1"}
+      startScratch={params.fields === "1"}
     />
   );
 }

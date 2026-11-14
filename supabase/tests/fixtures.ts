@@ -109,6 +109,8 @@ export const EVENT = { en1Comment: id(0x7001), be1Comment: id(0x7101) };
 
 export const MENTION = { danaInEn1: id(0x8001) };
 
+export const SHAPING = { jon: id(0xa001) };
+
 export const ATTACHMENT = { en1Figma: id(0x9001), be1Link: id(0x9101) };
 
 export const FILE_PATH = {
@@ -190,6 +192,10 @@ insert into public.events (id, org_id, capsule_id, actor_user_id, kind, data) va
 
 insert into public.mentions (id, org_id, event_id, user_id) values
   ('${MENTION.danaInEn1}', '${ORG.acme}', '${EVENT.en1Comment}', '${P.dana}');
+
+-- Jon asked Claude to shape a capsule earlier today.
+insert into public.shaping_requests (id, org_id, user_id, status, model)
+  values ('${SHAPING.jon}', '${ORG.acme}', '${P.jon}', 'ok', 'claude-opus-5-5');
 
 -- Christina removed "Sales (you own it)" from her Needs your attention.
 insert into public.dismissals (org_id, user_id, capsule_id, kind, target_id, since)
