@@ -56,3 +56,26 @@ Answers Christina gave before the build started. These sit alongside `v1-scope.m
 27. **"Needs you here" strip:** built in step 8 together with Home's Needs your attention.
 28. **New capsule:** goes straight to the "Set up your capsule" form until step 9 adds the AI composer in front of it.
 29. **Step 5 in two parts:** 5a (creating capsules and the capsule page) and 5b (the Capsules page and adding or removing components).
+
+## Step 6 answers (Nov. 12 2026)
+
+30. **@mention emails** start in step 11 with the other notification emails. Mentions are saved from step 6.
+31. **Comments:** people can delete their own comment (with Undo), but not edit it.
+32. **Undo and Activity:** when a change is undone, its entry disappears from Activity, as if it never happened. The log itself keeps both.
+
+## Step 7 answers (Nov. 13 2026)
+
+33. **Follower view:** anyone who isn't on a capsule's team sees it, whether they follow it or not, with a + Follow button.
+34. **Team members** don't get a Follow button (they see Share).
+35. **Followers pill** is in V1: faces, count, "+N this week" and the list.
+
+## Example data (Nov. 13 2026)
+
+36. **Example data page** (`/dev/examples`) for the emails in `EXAMPLE_DATA_EMAILS`. Example teammates are "+" versions of Christina's email. Each step adds its example. Removed before launch.
+
+## Step 8 answers (Nov. 14 2026)
+
+37. **Removing a Home row** is remembered in a new `dismissals` table (added to the V1 tables), so it works across devices. A removed row comes back if it changes (for example, reassigned to you again).
+38. **@mentions show on Home** as "Dana mentioned you in EX-1" rows in Needs your attention. They clear with X, or when you comment on that capsule.
+39. **Agent attribution groundwork:** the activity log gets `source` (app, api, mcp) and `agent_client` now; the agent UI comes with the MCP work after V1.
+40. **Multiple collaborators per work item** becomes a new **step 12**, before launch, together with a work item detail view and work item statuses.

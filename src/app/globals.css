@@ -269,6 +269,7 @@
   --animate-rise: rise 0.3s ease both;
   --animate-lift-in: lift-in 0.85s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-fade-in: fade-in 0.6s ease both;
+  --animate-hl: hl 2.4s ease both;
 
   /* Layout breakpoints from the responsive sidebar decision */
   --breakpoint-laptop: 900px;
@@ -323,6 +324,18 @@
     opacity: 0;
   }
 }
+/* A brief highlight on the item you opened from Home (prototype hl). */
+@keyframes hl {
+  0%,
+  40% {
+    background: var(--subtle);
+    box-shadow: 0 0 0 4px var(--subtle);
+  }
+  100% {
+    background: transparent;
+    box-shadow: 0 0 0 4px transparent;
+  }
+}
 
 /* Reduced motion: entrances become a short fade, nothing moves. */
 @media (prefers-reduced-motion: reduce) {
@@ -330,5 +343,9 @@
   .animate-lift-in,
   .animate-fade-in {
     animation: fade-in 0.3s ease both;
+  }
+  .animate-hl {
+    animation: none;
+    background: var(--subtle);
   }
 }

@@ -1,4 +1,5 @@
 import type { ActivityEvent } from "@/lib/activity";
+import type { AttentionRow } from "@/lib/attention";
 import type { ComponentColor, Status } from "@/lib/design";
 
 /** Shapes shared by the capsule page (server) and its interactive parts (browser). */
@@ -57,6 +58,8 @@ export type CapsuleData = {
   people: PersonRef[];
   componentTypes: ComponentType[];
   me: PersonRef;
+  /** Your rows from Needs your attention that are on this capsule ("Needs you here"). */
+  needsMe: AttentionRow[];
   /** People following the capsule, and since when (ISO timestamp). */
   followers: { userId: string; since: string }[];
   /** The capsule's activity log, newest first (raw; see lib/activity.ts). */
