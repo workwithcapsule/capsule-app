@@ -15,6 +15,7 @@ import {
   NAMES,
   ORG,
   P,
+  SHAPING,
   SPACE,
   TYPE,
 } from "./fixtures";
@@ -848,6 +849,86 @@ const groups: Group[] = [
            values ($1, $2, $3, 'comment', '{"body":"hi"}', 'mcp', 'Claude')`,
           [ORG.acme, CAPSULE.en1, P.jon],
         ),
+      },
+    ],
+  },
+  {
+    title: "AI shaping requests",
+    cases: [
+      {
+        who: "jon",
+        tries: "start a shaping request",
+        expect: "allowed",
+        run: async (db) => {
+          const id = await value<string>(db, `select public.start_shaping()`);
+          return check(Boolean(id), String(id));
+        },
+      },
+      {
+        who: "jon",
+        tries: "record what happened to his own request (edited, then created EN-1)",
+        expect: "allowed",
+        run: write(
+          `update public.shaping_requests set outcome = 'edited', capsule_id = $2 where id = $1`,
+          [SHAPING.jon, CAPSULE.en1],
+        ),
+      },
+      {
+        who: "dana",
+        tries: "see Jon's shaping request",
+        expect: "blocked",
+        run: read(`select 1 from public.shaping_requests where id = $1`, [SHAPING.jon]),
+      },
+      {
+        who: "dana",
+        tries: "change Jon's shaping request",
+        expect: "blocked",
+        run: write(`update public.shaping_requests set outcome = 'discarded' where id = $1`, [
+          SHAPING.jon,
+        ]),
+      },
+      {
+        who: "jon",
+        tries: "move his request to another person",
+        expect: "blocked",
+        run: write(`update public.shaping_requests set user_id = $2 where id = $1`, [
+          SHAPING.jon,
+          P.dana,
+        ]),
+      },
+      {
+        who: "jon",
+        tries: "add a request directly, around the daily cap",
+        expect: "blocked",
+        run: write(`insert into public.shaping_requests (org_id, user_id) values ($1, $2)`, [
+          ORG.acme,
+          P.jon,
+        ]),
+      },
+      {
+        who: "sam",
+        tries: "start a shaping request without an org",
+        expect: "blocked",
+        run: write(`select public.start_shaping()`),
+      },
+      {
+        who: "christina",
+        tries: "shape more than 30 capsules in a day for Acme (the 31st is refused)",
+        expect: "allowed",
+        run: async (db) => {
+          let started = 0;
+          let refused = "";
+          for (let i = 0; i < 40 && !refused; i++) {
+            const r = await attempt(db, `select public.start_shaping()`);
+            if (r.allowed) started++;
+            else refused = r.detail;
+          }
+          // Jon's request from earlier today counts too, so Christina gets 29.
+          return check(
+            refused.includes("Daily shaping limit") && started === 29,
+            `started ${started}; refused: ${refused}`,
+          );
+        },
       },
     ],
   },

@@ -15,12 +15,26 @@ import type { ComponentType, PersonRef } from "@/lib/capsule-types";
 import { cn } from "@/lib/utils";
 import { createCapsule } from "../capsules/actions";
 import { NativeSelect } from "@/components/ui/native-select";
+import type { ShapedDraft } from "@/lib/ai/types";
+import { CaretLeft, Warning } from "@phosphor-icons/react";
+import { recordShapingOutcome } from "./actions";
 
 /*
- * "Set up your capsule" (prototype New capsule, filling in the fields).
- * Everything here is saved together when you click Create. Step 9 adds the
- * AI composer in front of this form.
+ * "Set up your capsule" (prototype New capsule, filling in the fields), and
+ * "Review your capsule" when it starts from an AI suggestion (step 9).
+ * Everything here is saved together when you click Create.
  */
+
+/** Set while reviewing an AI suggestion: drives the copy, Orbit's reveal and the log. */
+export type ReviewState = {
+  requestId: string;
+  note: string | null;
+  onStartOver: () => void;
+  /** Component rows shown so far (Orbit morphs beads into them one by one). */
+  revealed: number;
+  /** Rows whose owner and date have "resolved" from the thinking indicator. */
+  resolved: number;
+};
 
 type DraftItem = { key: string; title: string; assigneeId: string | null };
 type DraftComponent = {
@@ -44,25 +58,47 @@ export function NewCapsuleForm({
   types,
   me,
   defaultSpaceId,
+  initial,
+  review,
+  defaultOutcome = "",
 }: {
   spaces: SpaceOption[];
   people: PersonRef[];
   types: ComponentType[];
   me: PersonRef;
   defaultSpaceId: string | null;
+  /** An AI suggestion to start from. */
+  initial?: ShapedDraft;
+  review?: ReviewState;
+  /** Filling in the fields after shaping failed keeps the description as the outcome. */
+  defaultOutcome?: string;
 }) {
   const router = useRouter();
   const toast = useToast();
   const [pending, start] = useTransition();
-  const [name, setName] = useState("");
-  const [outcome, setOutcome] = useState("");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [outcome, setOutcome] = useState(initial?.outcome ?? defaultOutcome);
   const [spaceId, setSpaceId] = useState(
-    defaultSpaceId ?? spaces.find((s) => s.joined)?.id ?? spaces[0]?.id ?? "",
+    (initial?.spaceId && spaces.some((s) => s.id === initial.spaceId) ? initial.spaceId : null) ??
+      defaultSpaceId ??
+      spaces.find((s) => s.joined)?.id ??
+      spaces[0]?.id ??
+      "",
   );
-  const [launchDate, setLaunchDate] = useState<string | null>(null);
-  const [dateType, setDateType] = useState<"launch" | "due">("launch");
-  const [ownerId, setOwnerId] = useState<string | null>(me.id);
-  const [components, setComponents] = useState<DraftComponent[]>([]);
+  const [launchDate, setLaunchDate] = useState<string | null>(initial?.launchDate ?? null);
+  const [dateType, setDateType] = useState<"launch" | "due">(initial?.dateType ?? "launch");
+  const [ownerId, setOwnerId] = useState<string | null>(initial ? initial.ownerId : me.id);
+  const [components, setComponents] = useState<DraftComponent[]>(() =>
+    (initial?.components ?? []).map((c) => ({
+      typeId: c.typeId,
+      ownerId: c.ownerId,
+      dueDate: c.dueDate,
+      goal: c.goal,
+      collaborators: [],
+      items: c.items.map((i) => ({ key: nextKey(), title: i.title, assigneeId: i.assigneeId })),
+      itemDraft: "",
+    })),
+  );
   const [tried, setTried] = useState(false);
   const [error, setError] = useState("");
   const [leaveTo, setLeaveTo] = useState<string | null>(null);
@@ -71,7 +107,37 @@ export function NewCapsuleForm({
   const typeById = new Map(types.map((t) => [t.id, t]));
   const dirty =
     !finished &&
-    Boolean(name.trim() || outcome.trim() || launchDate || components.length || ownerId !== me.id);
+    Boolean(
+      review ||
+      name.trim() ||
+      outcome.trim() ||
+      launchDate ||
+      components.length ||
+      ownerId !== me.id,
+    );
+
+  // What the suggestion looked like, to tell "created as suggested" from "edited".
+  const snapshot = () =>
+    JSON.stringify({
+      name: name.trim(),
+      outcome: outcome.trim(),
+      spaceId,
+      launchDate,
+      dateType,
+      ownerId,
+      components: components.map((c) => ({
+        typeId: c.typeId,
+        ownerId: c.ownerId,
+        dueDate: c.dueDate,
+        goal: c.goal.trim(),
+        collaborators: c.collaborators,
+        items: [
+          ...c.items.map((i) => ({ title: i.title, assigneeId: i.assigneeId })),
+          ...(c.itemDraft.trim() ? [{ title: c.itemDraft.trim(), assigneeId: null }] : []),
+        ],
+      })),
+    });
+  const [suggested] = useState(snapshot);
 
   // Leaving with something entered asks first (answer 9: Discard or Keep editing).
   useEffect(() => {
@@ -137,6 +203,13 @@ export function NewCapsuleForm({
         return;
       }
       setFinished(true);
+      if (review) {
+        void recordShapingOutcome(
+          review.requestId,
+          snapshot() === suggested ? "created" : "edited",
+          r.data!.id,
+        );
+      }
       toast(`${r.data!.key} ${name.trim()} is ready.`);
       router.push(`/capsules/${r.data!.key.toLowerCase()}`);
     });
@@ -144,15 +217,43 @@ export function NewCapsuleForm({
 
   return (
     <div className="mx-auto flex max-w-[860px] flex-col gap-6 px-4 pt-6 pb-36 laptop:px-8 laptop:pt-10">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-[28px] leading-[34px] font-semibold tracking-[-0.02em]">
-          Set up your capsule
-        </h1>
-        <p className="text-[15px] leading-[22px] text-muted-foreground">
-          Add what you know now. Components, owners and dates can all wait until after you create
-          it.
-        </p>
-      </div>
+      {review ? (
+        <div className="flex animate-rise flex-col gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              void recordShapingOutcome(review.requestId, "discarded");
+              review.onStartOver();
+            }}
+            className="flex items-center gap-1 self-start text-[13px] text-muted-foreground hover:text-foreground"
+          >
+            <CaretLeft size={14} aria-hidden="true" />
+            Start over
+          </button>
+          <h1 className="text-[28px] leading-[34px] font-semibold tracking-[-0.02em]">
+            Review your capsule
+          </h1>
+          <p className="text-[15px] leading-[22px] text-muted-foreground">
+            Everything here is editable, and nobody is notified until you create it.
+          </p>
+          {review.note && (
+            <p role="status" className="mt-1 flex items-start gap-1.5 text-[13px] text-c-amber-fg">
+              <Warning size={14} className="mt-0.5 flex-none" aria-hidden="true" />
+              {review.note}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1">
+          <h1 className="text-[28px] leading-[34px] font-semibold tracking-[-0.02em]">
+            Set up your capsule
+          </h1>
+          <p className="text-[15px] leading-[22px] text-muted-foreground">
+            Add what you know now. Components, owners and dates can all wait until after you create
+            it.
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-col gap-[18px] rounded-2xl border border-border bg-surface p-5 shadow-card">
         <div className="flex flex-col gap-1.5">
@@ -260,12 +361,19 @@ export function NewCapsuleForm({
         </div>
         {components.length > 0 && (
           <ul className="flex flex-col gap-3">
-            {components.map((c) => {
+            {components.map((c, index) => {
               const t = typeById.get(c.typeId)!;
+              const hidden = review ? index >= review.revealed : false;
+              const thinking = review ? index >= review.resolved : false;
               return (
                 <li
                   key={c.typeId}
-                  className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-card"
+                  data-shape-index={index}
+                  aria-hidden={hidden || undefined}
+                  className={cn(
+                    "flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-card transition-opacity duration-300 motion-reduce:transition-none",
+                    hidden && "opacity-0",
+                  )}
                 >
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                     <span className="flex min-w-0 flex-1 items-center gap-2">
@@ -285,25 +393,33 @@ export function NewCapsuleForm({
                       title="Component owner"
                     >
                       <User size={14} aria-hidden="true" />
-                      <PersonPicker
-                        value={c.ownerId}
-                        people={people}
-                        meId={me.id}
-                        emptyLabel="No owner"
-                        label={`Owner of ${t.name}`}
-                        onPick={(ownerId) => update(c.typeId, { ownerId })}
-                      />
+                      {thinking ? (
+                        <ThinkChip label={`Choosing an owner for ${t.name}`} />
+                      ) : (
+                        <PersonPicker
+                          value={c.ownerId}
+                          people={people}
+                          meId={me.id}
+                          emptyLabel="No owner"
+                          label={`Owner of ${t.name}`}
+                          onPick={(ownerId) => update(c.typeId, { ownerId })}
+                        />
+                      )}
                     </span>
                     <span
                       className="flex items-center gap-1.5 text-muted-foreground"
                       title="Due date"
                     >
                       <CalendarBlank size={14} aria-hidden="true" />
-                      <DateField
-                        value={c.dueDate}
-                        onPick={(dueDate) => update(c.typeId, { dueDate })}
-                        label={`Due date for ${t.name}`}
-                      />
+                      {thinking ? (
+                        <ThinkChip label={`Choosing a date for ${t.name}`} />
+                      ) : (
+                        <DateField
+                          value={c.dueDate}
+                          onPick={(dueDate) => update(c.typeId, { dueDate })}
+                          label={`Due date for ${t.name}`}
+                        />
+                      )}
                     </span>
                     <Button
                       variant="quiet"
@@ -488,6 +604,7 @@ export function NewCapsuleForm({
               size="md"
               onClick={() => {
                 setFinished(true);
+                if (review) void recordShapingOutcome(review.requestId, "discarded");
                 const to = leaveTo!;
                 setLeaveTo(null);
                 router.push(to);
@@ -502,5 +619,27 @@ export function NewCapsuleForm({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/** Shown in place of an owner or date until it "resolves" (prototype think chip). */
+function ThinkChip({ label }: { label: string }) {
+  return (
+    <span
+      role="status"
+      aria-label={label}
+      className="inline-flex h-8 min-w-[120px] items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-xs text-faint"
+    >
+      <span className="inline-flex gap-[3px]" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <i
+            key={i}
+            className="size-[5px] animate-think-dot rounded-full bg-faint"
+            style={{ animationDelay: `${i * 0.15}s` }}
+          />
+        ))}
+      </span>
+      thinking
+    </span>
   );
 }

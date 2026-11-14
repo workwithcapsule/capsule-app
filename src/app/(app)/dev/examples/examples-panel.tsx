@@ -9,6 +9,15 @@ import { deleteExamples, refreshExamples } from "./actions";
 type Status = { exists: boolean; capsules: { key: string; name: string }[] } | { error: string };
 
 /** What each example is for. Each build step adds to this list. */
+const SHAPING_EXAMPLES = [
+  [
+    "a launch",
+    "Launch the partner referral program to our sales team by mid-January, with a training session for reps",
+  ],
+  ["a bug fix", "Fix the duplicate payout notification bug before the next payout run on Friday"],
+  ["a vague idea", "Make onboarding better"],
+] as const;
+
 const HOME =
   "Home: your Needs your attention gets an overdue item (EX-2), a due-soon item (EX-1), a component with no owner (EX-1), components you own and two @mentions. Activity today fills from all four.";
 
@@ -69,6 +78,28 @@ export function ExamplesPanel({ status }: { status: Status }) {
               </Button>
             ))}
         </div>
+      </section>
+
+      <section aria-labelledby="shape-h" className="flex flex-col gap-3">
+        <h2 id="shape-h" className="text-base leading-6 font-semibold">
+          AI shaping
+        </h2>
+        <p className="text-[13px] text-muted-foreground">
+          Each link opens New capsule and starts shaping right away (Orbit, then the review page).
+          Each one uses one of your org’s 30 shapings for today.
+        </p>
+        <ul className="flex flex-wrap gap-2">
+          {SHAPING_EXAMPLES.map(([label, text]) => (
+            <li key={label}>
+              <Link
+                href={`/new?go=1&prompt=${encodeURIComponent(text)}`}
+                className="inline-flex h-8 items-center rounded-full border border-border bg-surface px-3.5 text-[13px] text-foreground no-underline hover:bg-subtle"
+              >
+                Try shaping: {label}
+              </Link>
+            </li>
+          ))}
+        </ul>
       </section>
 
       {status.exists && (

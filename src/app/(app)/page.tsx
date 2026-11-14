@@ -3,13 +3,17 @@ import { AttentionList } from "@/components/attention-list";
 import { loadHome } from "@/lib/home";
 import { ActivityToday } from "./home/activity-today";
 import { Greeting } from "./home/greeting";
+import { StartCapsule } from "./home/start-capsule";
 
 async function HomeContent() {
   const data = await loadHome();
   if (!data) return null;
   return (
     <>
-      <Greeting name={data.me.name} />
+      <div className="flex flex-col gap-5">
+        <Greeting name={data.me.name} />
+        <StartCapsule />
+      </div>
       <section aria-labelledby="attn-h" className="flex flex-col gap-3">
         <h2 id="attn-h" className="text-base leading-6 font-semibold">
           Needs your attention{" "}

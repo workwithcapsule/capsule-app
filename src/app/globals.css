@@ -270,6 +270,7 @@
   --animate-lift-in: lift-in 0.85s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-fade-in: fade-in 0.6s ease both;
   --animate-hl: hl 2.4s ease both;
+  --animate-think-dot: think-dot 1.1s ease-in-out infinite;
 
   /* Layout breakpoints from the responsive sidebar decision */
   --breakpoint-laptop: 900px;
@@ -324,6 +325,17 @@
     opacity: 0;
   }
 }
+@keyframes think-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
 /* A brief highlight on the item you opened from Home (prototype hl). */
 @keyframes hl {
   0%,
@@ -348,4 +360,130 @@
     animation: none;
     background: var(--subtle);
   }
+}
+
+/* Orbit: the "shaping your capsule" motion (design-decisions.md section 14,
+   prototype .orbit-layer). A fixed layer above the page; positions are set
+   frame by frame from orbit.tsx. Only the component colors carry tint. */
+.orbit-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+  overflow: hidden;
+}
+.orbit-layer > * {
+  position: absolute;
+  left: 0;
+  top: 0;
+  visibility: hidden;
+  will-change: transform, opacity;
+}
+.ob-amb {
+  width: 300px;
+  height: 300px;
+  border-radius: 999px;
+  filter: blur(60px);
+  opacity: 0.55;
+}
+.dark .ob-amb {
+  opacity: 0.3;
+}
+.ob-glass,
+.ob-face {
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+  border: 1px solid color-mix(in srgb, #fff 70%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 12px 32px rgba(42, 37, 35, 0.1);
+}
+.dark .ob-glass,
+.dark .ob-face {
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 12px 32px rgba(0, 0, 0, 0.4);
+}
+.ob-composer {
+  border-radius: 20px;
+  padding: 18px 20px;
+  font-size: 16px;
+  line-height: 24px;
+  overflow: hidden;
+  transform-origin: center;
+}
+/* The page being shaped: a mini frosted page, no text (section 14). */
+.ob-orb {
+  width: 176px;
+  height: 108px;
+  border-radius: 18px;
+  padding: 16px 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  transform-origin: center;
+}
+.ob-l {
+  display: block;
+  height: 7px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--text) 9%, transparent) 0%,
+    color-mix(in srgb, var(--text) 3%, transparent) 45%,
+    color-mix(in srgb, var(--text) 9%, transparent) 90%
+  );
+  background-size: 220% 100%;
+  animation: ob-shimmer 1.6s linear infinite;
+}
+.ob-l:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.ob-l:nth-child(3) {
+  animation-delay: 0.24s;
+}
+.ob-l:nth-child(4) {
+  animation-delay: 0.36s;
+}
+.ob-h {
+  width: 38%;
+  height: 9px;
+  margin-bottom: 3px;
+  background: color-mix(in srgb, var(--text) 16%, transparent);
+  animation: none;
+}
+@keyframes ob-shimmer {
+  from {
+    background-position: 110% 0;
+  }
+  to {
+    background-position: -110% 0;
+  }
+}
+.ob-bead {
+  border-radius: 26px;
+  overflow: hidden;
+}
+.ob-tint,
+.ob-face {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.ob-tint {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 8px 24px rgba(42, 37, 35, 0.12);
+  transition: background-color 0.4s ease;
+}
+.ob-ic {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  display: flex;
 }
