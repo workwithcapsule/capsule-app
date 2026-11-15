@@ -1291,6 +1291,81 @@ const groups: Group[] = [
     ],
   },
   {
+    title: "Attachments in Activity, and link and file checks",
+    cases: [
+      {
+        who: "jon",
+        tries: "attach a link, which logs “attached” under his name",
+        expect: "allowed",
+        run: async (db) => {
+          await attempt(
+            db,
+            `insert into public.attachments (org_id, capsule_id, kind, name, url, link_type, added_by)
+             values ($1, $2, 'link', 'Runbook', 'https://docs.google.com/document/d/runbook', 'google_docs', $3)`,
+            [ORG.acme, CAPSULE.en1, P.jon],
+          );
+          const entry = await value<string>(
+            db,
+            `select actor_user_id || ' ' || kind || ' ' || (data ->> 'name') from public.events
+             where capsule_id = $1 and kind like 'attachment%'`,
+            [CAPSULE.en1],
+          );
+          return check(entry === `${P.jon} attachment_added Runbook`, String(entry));
+        },
+      },
+      {
+        who: "dana",
+        tries: "remove her link and put it back, which logs both",
+        expect: "allowed",
+        run: async (db) => {
+          await attempt(db, `update public.attachments set removed_at = now() where id = $1`, [
+            ATTACHMENT.en1Figma,
+          ]);
+          await attempt(db, `update public.attachments set removed_at = null where id = $1`, [
+            ATTACHMENT.en1Figma,
+          ]);
+          const entries = await value<string>(
+            db,
+            `select string_agg(kind, ',' order by created_at) from public.events
+             where capsule_id = $1 and kind like 'attachment%'`,
+            [CAPSULE.en1],
+          );
+          return check(entries === "attachment_removed,attachment_restored", String(entries));
+        },
+      },
+      {
+        who: "jon",
+        tries: "attach a “javascript:” link",
+        expect: "blocked",
+        run: write(
+          `insert into public.attachments (org_id, capsule_id, kind, name, url, link_type, added_by)
+           values ($1, $2, 'link', 'Click me', 'javascript:alert(1)', 'link', $3)`,
+          [ORG.acme, CAPSULE.en1, P.jon],
+        ),
+      },
+      {
+        who: "jon",
+        tries: "record a file on EN-1 that's stored in another capsule's folder",
+        expect: "blocked",
+        run: write(
+          `insert into public.attachments (org_id, capsule_id, kind, name, storage_path, size_bytes, added_by)
+           values ($1, $2, 'file', 'Plan.pdf', $3, 1000, $4)`,
+          [ORG.acme, CAPSULE.en1, FILE_PATH.be1, P.jon],
+        ),
+      },
+      {
+        who: "jon",
+        tries: "record a file on EN-1 stored in EN-1's own folder",
+        expect: "allowed",
+        run: write(
+          `insert into public.attachments (org_id, capsule_id, kind, name, storage_path, size_bytes, added_by)
+           values ($1, $2, 'file', 'Plan.pdf', $3, 1000, $4)`,
+          [ORG.acme, CAPSULE.en1, `${CAPSULE.en1}/x/plan.pdf`, P.jon],
+        ),
+      },
+    ],
+  },
+  {
     title: "Setting up an org and invitations",
     cases: [
       {

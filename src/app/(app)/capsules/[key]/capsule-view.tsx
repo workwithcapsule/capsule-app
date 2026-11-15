@@ -5,6 +5,7 @@ import { AttentionList } from "@/components/attention-list";
 import type { CapsuleData } from "@/lib/capsule-types";
 import { permissionsFor } from "@/lib/capsule-types";
 import { ActivitySection } from "./activity-section";
+import { AttachmentsSection } from "./attachments-section";
 import { CapsuleHeader } from "./capsule-header";
 import { ComponentsSection } from "./components-section";
 import { Overview } from "./overview";
@@ -16,7 +17,7 @@ import { useCapsule } from "./use-capsule";
  * comments are in the side panel. People not on the team get the follower
  * view. "Needs you here" lists your own rows from Home for this capsule.
  * Opening from Home (?item=, ?component=, ?activity=1) selects that exact
- * thing. Attachments (step 10) join this page later.
+ * thing. Attachments sit under Components.
  */
 export function CapsuleView({ initial }: { initial: CapsuleData }) {
   const { view, change } = useCapsule(initial);
@@ -49,6 +50,7 @@ export function CapsuleView({ initial }: { initial: CapsuleData }) {
           <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-6">
             <Overview view={view} />
             <ComponentsSection view={view} perms={perms} change={change} focus={focus} />
+            <AttachmentsSection view={view} perms={perms} change={change} />
           </div>
         ) : (
           // The follower view (anyone not on the team): Overview, then
@@ -57,6 +59,7 @@ export function CapsuleView({ initial }: { initial: CapsuleData }) {
             <Overview view={view} />
             <ActivitySection view={view} perms={perms} change={change} variant="follower" />
             <ComponentsSection view={view} perms={perms} change={change} focus={focus} />
+            <AttachmentsSection view={view} perms={perms} change={change} />
           </div>
         )}
         <aside className="flex min-w-0 flex-[1_1_320px] flex-col gap-6">

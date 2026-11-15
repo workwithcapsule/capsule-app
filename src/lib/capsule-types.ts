@@ -1,5 +1,6 @@
 import type { ActivityEvent } from "@/lib/activity";
 import type { AttentionRow } from "@/lib/attention";
+import type { LinkType } from "@/lib/attachments";
 import type { ComponentColor, Status } from "@/lib/design";
 
 /** Shapes shared by the capsule page (server) and its interactive parts (browser). */
@@ -30,6 +31,18 @@ export type CapsuleComponent = {
   collaborators: { userId: string; source: "added" | "assignment" }[];
 };
 
+export type Attachment = {
+  id: string;
+  kind: "file" | "link";
+  name: string;
+  url: string | null;
+  storagePath: string | null;
+  linkType: LinkType | null;
+  sizeBytes: number | null;
+  addedBy: string | null;
+  createdAt: string;
+};
+
 export type ComponentType = {
   id: string;
   name: string;
@@ -58,6 +71,8 @@ export type CapsuleData = {
   people: PersonRef[];
   componentTypes: ComponentType[];
   me: PersonRef;
+  /** Attachments on the capsule (not removed), oldest first. */
+  attachments: Attachment[];
   /** Your rows from Needs your attention that are on this capsule ("Needs you here"). */
   needsMe: AttentionRow[];
   /** People following the capsule, and since when (ISO timestamp). */

@@ -90,7 +90,21 @@ export async function exampleStatus(admin: Admin, orgId: string) {
 /** Removes the Examples space (and everything in it) and the example teammates. */
 export async function removeExamples(admin: Admin, me: Me) {
   const space = await findSpace(admin, me.orgId);
-  if (space) await must(admin.from("spaces").delete().eq("id", space.id), "Removing the space");
+  if (space) {
+    // Stored files go first; deleting the space removes their records.
+    const { data: caps } = await admin.from("capsules").select("id").eq("space_id", space.id);
+    const ids = (caps ?? []).map((c) => c.id);
+    if (ids.length) {
+      const { data: files } = await admin
+        .from("attachments")
+        .select("storage_path")
+        .in("capsule_id", ids)
+        .not("storage_path", "is", null);
+      const paths = (files ?? []).map((f) => f.storage_path as string);
+      if (paths.length) await admin.storage.from("attachments").remove(paths);
+    }
+    await must(admin.from("spaces").delete().eq("id", space.id), "Removing the space");
+  }
   const emails = TEAMMATES.map((t) => plusAddress(me.email, t.key));
   const { data: users } = await admin.from("users").select("id, email").in("email", emails);
   for (const u of users ?? []) {
@@ -393,6 +407,56 @@ export async function seedExamples(admin: Admin, me: Me) {
   );
   await event(ex1, mate.jon, "comment", { body: "Runbook draft goes up tomorrow." }, 0.7);
 
+  // Attachments (step 10): links of different kinds, and a small PDF.
+  const attach = async (
+    cap: string,
+    by: string,
+    hoursAgo: number,
+    a: { name: string } & ({ url: string; link_type: string } | { file: string }),
+  ) => {
+    let file: Record<string, unknown>;
+    if ("file" in a) {
+      const path = `${cap}/${crypto.randomUUID()}/${a.file}`;
+      const { error } = await admin.storage
+        .from("attachments")
+        .upload(path, examplePdf(a.name), { contentType: "application/pdf" });
+      if (error) throw new Error(`Uploading an example file: ${error.message}`);
+      file = {
+        kind: "file",
+        storage_path: path,
+        size_bytes: examplePdf(a.name).length,
+        mime_type: "application/pdf",
+      };
+    } else {
+      file = { kind: "link", url: a.url, link_type: a.link_type };
+    }
+    await must(
+      admin.from("attachments").insert({
+        org_id: org,
+        capsule_id: cap,
+        name: a.name,
+        added_by: by,
+        created_at: ago(hoursAgo),
+        ...file,
+      }),
+      "Adding an attachment",
+    );
+  };
+  await attach(ex1, me.id, 24 * 5, {
+    name: "Partner leaderboard PRD",
+    url: "https://docs.google.com/document/d/example-leaderboard-prd",
+    link_type: "google_docs",
+  });
+  await attach(ex1, mate.dana, 30, {
+    name: "Leaderboard designs v4",
+    url: "https://www.figma.com/file/example/leaderboard-designs-v4",
+    link_type: "figma",
+  });
+  await attach(ex1, mate.jon, 6, {
+    name: "Launch-messaging-v3.pdf",
+    file: "Launch-messaging-v3.pdf",
+  });
+
   // EX-2: You work on it -------------------------------------------------------
   const ex2 = await capsule(
     "Q1 partner newsletter",
@@ -451,6 +515,11 @@ export async function seedExamples(admin: Admin, me: Me) {
     ["Record a walkthrough video", mate.dana],
   ]);
   await follow(ex3, me.id, 40);
+  await attach(ex3, mate.bob, 26, {
+    name: "Portal walkthrough",
+    url: "https://www.loom.com/share/example-portal-walkthrough",
+    link_type: "loom",
+  });
   await event(ex3, mate.bob, "capsule_created", { name: "Partner portal redesign" }, 24 * 6);
   await event(
     ex3,
@@ -509,4 +578,29 @@ export async function seedExamples(admin: Admin, me: Me) {
   await event(ex4, mate.jon, "capsule_created", { name: "Partner referral program" }, 24);
 
   return exampleStatus(admin, org);
+}
+
+/** A tiny one-page PDF with a title, so example files open as real PDFs. */
+function examplePdf(title: string): Buffer {
+  const text = title.replace(/[()\\]/g, "");
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+    "",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+  ];
+  const stream = `BT /F1 24 Tf 72 700 Td (${text}) Tj ET\nBT /F1 12 Tf 72 670 Td (Example file from Capsule's Example data.) Tj ET`;
+  objects[3] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
+  let out = "%PDF-1.4\n";
+  const offsets: number[] = [];
+  objects.forEach((o, i) => {
+    offsets.push(out.length);
+    out += `${i + 1} 0 obj\n${o}\nendobj\n`;
+  });
+  const xref = out.length;
+  out += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  out += offsets.map((o) => `${String(o).padStart(10, "0")} 00000 n \n`).join("");
+  out += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(out, "latin1");
 }

@@ -31,3 +31,9 @@ we go; tick items off in the pull request that does them.
 - [ ] Remove the examples (Example data page → Remove examples), then remove
   the page itself (`src/app/(app)/dev/examples`, `src/lib/examples`) and the
   `EXAMPLE_DATA_EMAILS` setting in Vercel.
+
+## Attachments
+
+- [ ] Clean up stored files for attachments removed more than 30 days ago
+  (build-decisions.md 45). Needs a scheduled job; until then removed files stay
+  in the private bucket.

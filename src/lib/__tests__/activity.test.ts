@@ -212,3 +212,19 @@ group("the follower view", () => {
     expect(feed.map(kindLabel)).toEqual(["Comment", "Scope change", "Milestone", "Date change"]);
   });
 });
+
+group("attachments in Activity", () => {
+  it("describes them, and hides an attach followed by its Undo", () => {
+    expect(text([ev(0, "attachment_added", { attachment_id: "a1", name: "Designs v4" })])).toEqual([
+      "attached “Designs v4”",
+    ]);
+    expect(
+      text([
+        ev(0, "attachment_removed", { attachment_id: "a1", name: "Designs v4" }),
+        ev(0.2, "attachment_restored", { attachment_id: "a1", name: "Designs v4" }),
+      ]),
+    ).toEqual([]);
+    const [e] = buildFeed([ev(0, "attachment_added", { attachment_id: "a2", name: "Deck" })]);
+    expect(forFollowers(e) && kindLabel(e)).toBe("Scope change");
+  });
+});
