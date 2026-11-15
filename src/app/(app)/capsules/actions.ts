@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { notifyLater } from "@/lib/notify";
 import { createClient } from "@/lib/supabase/server";
 import type { Status } from "@/lib/design";
 
@@ -48,15 +49,18 @@ export type CapsulePatch = Partial<{
 export async function updateCapsule(id: string, patch: CapsulePatch): Promise<Result> {
   if (patch.name !== undefined && !patch.name.trim())
     return { ok: false, error: "A capsule needs a name." };
-  const { supabase } = await db();
+  const { supabase, userId } = await db();
   const { data, error } = await supabase.from("capsules").update(patch).eq("id", id).select("id");
   if (error) return { ok: false, error: explain(error) };
-  if (data?.length) refresh();
-  return data?.length ? { ok: true } : { ok: false, error: NOT_ALLOWED };
+  if (!data?.length) return { ok: false, error: NOT_ALLOWED };
+  refresh();
+  if (patch.owner_id)
+    await notifyLater(userId, { kind: "capsule_owner", capsuleId: id, ownerId: patch.owner_id });
+  return { ok: true };
 }
 
 export async function createCapsule(input: unknown): Promise<Result<{ id: string; key: string }>> {
-  const { supabase } = await db();
+  const { supabase, userId } = await db();
   const { data, error } = await supabase.rpc("create_capsule", { p_input: input });
   if (error)
     return {
@@ -64,7 +68,10 @@ export async function createCapsule(input: unknown): Promise<Result<{ id: string
       error: error.code === "23505" ? "Each component can only be added once." : explain(error),
     };
   refresh();
-  return { ok: true, data: data as { id: string; key: string } };
+  const made = data as { id: string; key: string };
+  // "Component owners will be notified when you click create."
+  await notifyLater(userId, { kind: "new_capsule", capsuleId: made.id });
+  return { ok: true, data: made };
 }
 
 // Components ------------------------------------------------------------------
@@ -77,11 +84,18 @@ export type ComponentPatch = Partial<{
 }>;
 
 export async function updateComponent(id: string, patch: ComponentPatch): Promise<Result> {
-  const { supabase } = await db();
+  const { supabase, userId } = await db();
   const { data, error } = await supabase.from("components").update(patch).eq("id", id).select("id");
   if (error) return { ok: false, error: explain(error) };
-  if (data?.length) refresh();
-  return data?.length ? { ok: true } : { ok: false, error: NOT_ALLOWED };
+  if (!data?.length) return { ok: false, error: NOT_ALLOWED };
+  refresh();
+  if (patch.owner_id)
+    await notifyLater(userId, {
+      kind: "component_owner",
+      componentId: id,
+      ownerId: patch.owner_id,
+    });
+  return { ok: true };
 }
 
 export async function addCollaborator(input: {
@@ -148,6 +162,9 @@ export async function addWorkItem(input: {
     .single();
   if (error) return { ok: false, error: explain(error) };
   refresh();
+  // Undo putting back a deleted item (input.id) isn't a new assignment.
+  if (input.assigneeId && !input.id && !input.done)
+    await notifyLater(userId, { kind: "assigned", itemId: data.id, assigneeId: input.assigneeId });
   return { ok: true, data: { id: data.id } };
 }
 
@@ -157,11 +174,14 @@ export async function updateWorkItem(
 ): Promise<Result> {
   if (patch.title !== undefined && !patch.title.trim())
     return { ok: false, error: "A work item needs a title." };
-  const { supabase } = await db();
+  const { supabase, userId } = await db();
   const { data, error } = await supabase.from("work_items").update(patch).eq("id", id).select("id");
   if (error) return { ok: false, error: explain(error) };
-  if (data?.length) refresh();
-  return data?.length ? { ok: true } : { ok: false, error: NOT_ALLOWED };
+  if (!data?.length) return { ok: false, error: NOT_ALLOWED };
+  refresh();
+  if (patch.assignee_id)
+    await notifyLater(userId, { kind: "assigned", itemId: id, assigneeId: patch.assignee_id });
+  return { ok: true };
 }
 
 export async function deleteWorkItem(id: string): Promise<Result> {
@@ -230,7 +250,7 @@ export async function postComment(input: {
   const body = input.body.trim();
   if (!body) return { ok: false, error: "Write a comment first." };
   if (body.length > 2000) return { ok: false, error: "Comments can be up to 2,000 characters." };
-  const { supabase } = await db();
+  const { supabase, userId } = await db();
   const { data, error } = await supabase.rpc("post_comment", {
     p_capsule: input.capsuleId,
     p_body: body,
@@ -238,6 +258,8 @@ export async function postComment(input: {
   });
   if (error) return { ok: false, error: explain(error) };
   refresh();
+  if (input.mentions.length)
+    await notifyLater(userId, { kind: "mention", commentId: data as string });
   return { ok: true, data: { id: data as string } };
 }
 

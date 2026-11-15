@@ -18,6 +18,12 @@ const SHAPING_EXAMPLES = [
   ["a vague idea", "Make onboarding better"],
 ] as const;
 
+const EMAILS =
+  "Emails: the example teammates’ addresses are “+” versions of yours, so their notification emails arrive in your inbox. On EX-1, assign a work item to Dana (example), make Jon (example) the owner of a component, or @mention Bob (example) in a comment. About 20 seconds later the email arrives. Undo within those 20 seconds and nothing is sent.";
+
+const SEARCH =
+  "Search: press ⌘K (Ctrl+K) and type “EX-1”, “ex 3” or a word like “portal”. EX-4 shows “Can view” because you’re not on it.";
+
 const HOME =
   "Home: your Needs your attention gets an overdue item (EX-2), a due-soon item (EX-1), a component with no owner (EX-1), components you own and two @mentions. Activity today fills from all four.";
 
@@ -109,6 +115,8 @@ export function ExamplesPanel({ status }: { status: Status }) {
             The examples
           </h2>
           <p className="text-[13px] text-muted-foreground">{HOME}</p>
+          <p className="text-[13px] text-muted-foreground">{EMAILS}</p>
+          <p className="text-[13px] text-muted-foreground">{SEARCH}</p>
           <ul className="rounded-2xl border border-border bg-surface shadow-card">
             {status.capsules.map((c) => (
               <li

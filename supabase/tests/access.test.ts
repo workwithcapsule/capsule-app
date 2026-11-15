@@ -1366,6 +1366,23 @@ const groups: Group[] = [
     ],
   },
   {
+    title: "Email notification setting",
+    cases: [
+      {
+        who: "bob",
+        tries: "turn off his own notification emails",
+        expect: "allowed",
+        run: write(`update public.users set email_notifications = false where id = $1`, [P.bob]),
+      },
+      {
+        who: "christina",
+        tries: "turn off Bob's notification emails (even as org admin)",
+        expect: "blocked",
+        run: write(`update public.users set email_notifications = false where id = $1`, [P.bob]),
+      },
+    ],
+  },
+  {
     title: "Setting up an org and invitations",
     cases: [
       {
