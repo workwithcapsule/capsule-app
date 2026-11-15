@@ -3,7 +3,14 @@
 import { useOptimistic, useTransition } from "react";
 import { useToast } from "@/components/toaster";
 import type { ActivityEvent } from "@/lib/activity";
-import type { Attachment, CapsuleComponent, CapsuleData, WorkItem } from "@/lib/capsule-types";
+import type {
+  Attachment,
+  CapsuleComponent,
+  CapsuleData,
+  Piece,
+  WorkItem,
+} from "@/lib/capsule-types";
+import { followPieces } from "@/lib/work-items";
 import type { Result } from "../actions";
 
 /*
@@ -18,6 +25,9 @@ export type Op =
   | { type: "item"; id: string; patch: Partial<WorkItem> }
   | { type: "addItem"; item: WorkItem }
   | { type: "removeItem"; id: string }
+  | { type: "addPiece"; piece: Piece }
+  | { type: "piece"; id: string; patch: Partial<Piece> }
+  | { type: "removePiece"; id: string }
   | { type: "addCollaborator"; componentId: string; userId: string }
   | { type: "removeCollaborator"; componentId: string; userId: string }
   | { type: "addEvent"; event: ActivityEvent }
@@ -26,8 +36,59 @@ export type Op =
   | { type: "addAttachment"; attachment: Attachment }
   | { type: "removeAttachment"; id: string };
 
+/** After pieces change, the item follows them (unless set by hand), as in the database. */
+function withPieces(state: CapsuleData, pieces: Piece[], itemId: string): CapsuleData {
+  return {
+    ...state,
+    pieces,
+    items: state.items.map((i) =>
+      i.id === itemId
+        ? followPieces(
+            i,
+            pieces.filter((p) => p.itemId === itemId),
+          )
+        : i,
+    ),
+  };
+}
+
 function apply(state: CapsuleData, op: Op): CapsuleData {
   switch (op.type) {
+    case "addPiece":
+      return withPieces(
+        state,
+        [
+          ...state.pieces.map((p) =>
+            op.piece.isLead && p.itemId === op.piece.itemId ? { ...p, isLead: false } : p,
+          ),
+          op.piece,
+        ],
+        op.piece.itemId,
+      );
+    case "piece": {
+      const target = state.pieces.find((p) => p.id === op.id);
+      if (!target) return state;
+      return withPieces(
+        state,
+        state.pieces.map((p) =>
+          p.id === op.id
+            ? { ...p, ...op.patch }
+            : op.patch.isLead && p.itemId === target.itemId
+              ? { ...p, isLead: false }
+              : p,
+        ),
+        target.itemId,
+      );
+    }
+    case "removePiece": {
+      const target = state.pieces.find((p) => p.id === op.id);
+      if (!target) return state;
+      return withPieces(
+        state,
+        state.pieces.filter((p) => p.id !== op.id),
+        target.itemId,
+      );
+    }
     case "capsule":
       return { ...state, capsule: { ...state.capsule, ...op.patch } };
     case "component":
@@ -43,7 +104,11 @@ function apply(state: CapsuleData, op: Op): CapsuleData {
     case "addItem":
       return { ...state, items: [...state.items, op.item] };
     case "removeItem":
-      return { ...state, items: state.items.filter((i) => i.id !== op.id) };
+      return {
+        ...state,
+        items: state.items.filter((i) => i.id !== op.id),
+        pieces: state.pieces.filter((p) => p.itemId !== op.id),
+      };
     case "addCollaborator":
       return {
         ...state,

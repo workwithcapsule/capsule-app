@@ -2,6 +2,7 @@ import type { ActivityEvent } from "@/lib/activity";
 import type { AttentionRow } from "@/lib/attention";
 import type { LinkType } from "@/lib/attachments";
 import type { ComponentColor, Status } from "@/lib/design";
+import type { ItemStatus } from "@/lib/work-items";
 
 /** Shapes shared by the capsule page (server) and its interactive parts (browser). */
 
@@ -15,6 +16,22 @@ export type WorkItem = {
   assigneeId: string | null;
   createdBy: string | null;
   position: number;
+  /** One of the four work statuses; Done whenever it's checked off. */
+  status: ItemStatus;
+  /** Set by hand on an item with pieces, so it no longer follows them. */
+  statusManual: boolean;
+  note: string | null;
+};
+
+/** One collaborator's piece of a work item (step 12). */
+export type Piece = {
+  id: string;
+  itemId: string;
+  userId: string;
+  piece: string;
+  status: ItemStatus;
+  isLead: boolean;
+  createdBy: string | null;
 };
 
 export type CapsuleComponent = {
@@ -68,6 +85,8 @@ export type CapsuleData = {
   capsule: Capsule;
   components: CapsuleComponent[];
   items: WorkItem[];
+  /** Collaborators' pieces of the work items, oldest first. */
+  pieces: Piece[];
   people: PersonRef[];
   componentTypes: ComponentType[];
   me: PersonRef;
@@ -82,7 +101,9 @@ export type CapsuleData = {
 };
 
 /** Mirrors the database's rules, so the page only shows what each person can change. */
-export function permissionsFor(data: Pick<CapsuleData, "capsule" | "components" | "me">) {
+export function permissionsFor(
+  data: Pick<CapsuleData, "capsule" | "components" | "me"> & { pieces?: Piece[] },
+) {
   const me = data.me.id;
   const isOwner = data.capsule.ownerId === me;
   const onTeam =
@@ -91,14 +112,26 @@ export function permissionsFor(data: Pick<CapsuleData, "capsule" | "components" 
   const compById = new Map(data.components.map((c) => [c.id, c]));
   const ownsComponent = (componentId: string) => compById.get(componentId)?.ownerId === me;
   const editComponent = (componentId: string) => isOwner || ownsComponent(componentId);
+  const leads = (i: WorkItem) =>
+    (data.pieces ?? []).some((p) => p.itemId === i.id && p.userId === me && p.isLead);
+  const manageItem = (i: WorkItem) =>
+    onTeam &&
+    (editComponent(i.componentId) || i.assigneeId === me || i.createdBy === me || leads(i));
   return {
     isOwner,
     onTeam,
     editComponent,
-    completeItem: (i: WorkItem) => onTeam && (editComponent(i.componentId) || i.assigneeId === me),
+    /** Check it off or set its status. */
+    completeItem: (i: WorkItem) =>
+      onTeam && (editComponent(i.componentId) || i.assigneeId === me || leads(i)),
     renameItem: (i: WorkItem) =>
-      onTeam && (editComponent(i.componentId) || i.assigneeId === me || i.createdBy === me),
+      onTeam &&
+      (editComponent(i.componentId) || i.assigneeId === me || i.createdBy === me || leads(i)),
     deleteItem: (i: WorkItem) => onTeam && (editComponent(i.componentId) || i.createdBy === me),
+    /** Add and remove collaborators, and pick the lead. */
+    manageItem,
+    /** Change a piece: its own collaborator, or whoever manages the item. */
+    editPiece: (p: Piece, i: WorkItem) => onTeam && (p.userId === me || manageItem(i)),
     /** Anyone on the team may take an unassigned item or let go of their own. */
     assignOptions: (i: WorkItem): "anyone" | "self" | "none" =>
       !onTeam

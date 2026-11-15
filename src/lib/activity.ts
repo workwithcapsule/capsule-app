@@ -39,6 +39,8 @@ const CANCELS: Record<string, string[]> = {
   collaborator_added: ["collaborator_removed"],
   attachment_removed: ["attachment_added"],
   attachment_restored: ["attachment_removed"],
+  piece_removed: ["piece_added"],
+  piece_added: ["piece_removed"],
 };
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
@@ -47,6 +49,7 @@ const str = (v: unknown) => (typeof v === "string" ? v : "");
 function target(e: ActivityEvent): string {
   const d = e.data;
   if (e.kind.startsWith("item_")) return `item:${str(d.item_id)}`;
+  if (e.kind.startsWith("piece_")) return `piece:${str(d.item_id)}:${str(d.user)}`;
   if (e.kind.startsWith("attachment_")) return `attachment:${str(d.attachment_id)}`;
   if (e.kind.startsWith("collaborator_")) return `collab:${str(d.component_id)}:${str(d.user_id)}`;
   if (e.kind.startsWith("component_")) return `component:${str(d.component_id)}`;
@@ -148,6 +151,7 @@ export type DescribeContext = {
 
 const statusLabel = (v: unknown) => STATUS_META[v as Status]?.label ?? String(v ?? "");
 const quote = (v: unknown) => `“${str(v)}”`;
+const possessive = (name: string) => (name === "you" ? "your" : `${name}’s`);
 
 /** What happened, after the person's name: "moved Tech to In Review". */
 export function describe(e: FeedEntry, ctx: DescribeContext): string {
@@ -233,8 +237,43 @@ export function describe(e: FeedEntry, ctx: DescribeContext): string {
           return self(to)
             ? `took ${quote(d.title)}`
             : `assigned ${quote(d.title)} to ${person(to)}`;
+        case "status":
+          return `moved ${quote(d.title)} to ${statusLabel(to)}`;
       }
       break;
+    case "piece_added": {
+      const part = str(d.piece) ? ` for ${quote(d.piece)}` : "";
+      return self(d.user)
+        ? `joined ${quote(d.title)}${part}`
+        : `added ${person(d.user)} to ${quote(d.title)}${part}`;
+    }
+    case "piece_removed":
+      return self(d.user)
+        ? `left ${quote(d.title)}`
+        : `removed ${person(d.user)} from ${quote(d.title)}`;
+    case "piece_changed": {
+      const whose = self(d.user)
+        ? e.actorId === ctx.meId
+          ? "your"
+          : "their"
+        : possessive(person(d.user));
+      switch (d.field) {
+        case "piece":
+          return str(to)
+            ? `${str(from) ? "changed" : "set"} ${whose} part of ${quote(d.title)} to ${quote(to)}`
+            : `cleared ${whose} part of ${quote(d.title)}`;
+        case "status":
+          return to === "done"
+            ? `finished ${whose} part of ${quote(d.title)}`
+            : `moved ${whose} part of ${quote(d.title)} to ${statusLabel(to)}`;
+        case "lead":
+          if (!to) return `removed the lead on ${quote(d.title)}`;
+          return self(d.user)
+            ? `took the lead on ${quote(d.title)}`
+            : `made ${person(d.user)} the lead on ${quote(d.title)}`;
+      }
+      break;
+    }
     case "collaborator_added":
       return `added ${person(d.user_id)} to ${comp}`;
     case "collaborator_removed":
@@ -327,7 +366,7 @@ export function kindLabel(e: FeedEntry): string {
     e.kind === "capsule_created"
   )
     return "Scope change";
-  if (e.kind.startsWith("item_")) return "Work item";
+  if (e.kind.startsWith("item_") || e.kind.startsWith("piece_")) return "Work item";
   if (e.kind.startsWith("collaborator_")) return "Team change";
   return "Update";
 }

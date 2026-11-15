@@ -5,6 +5,7 @@ import {
   addedToCapsuleEmail,
   assignedEmail,
   mentionEmail,
+  pieceEmail,
   ownerOfCapsuleEmail,
   ownerOfComponentEmail,
   type Email,
@@ -30,6 +31,7 @@ export type NotifyJob =
   | { kind: "component_owner"; componentId: string; ownerId: string }
   | { kind: "capsule_owner"; capsuleId: string; ownerId: string }
   | { kind: "assigned"; itemId: string; assigneeId: string }
+  | { kind: "piece"; pieceId: string; userId: string }
   | { kind: "mention"; commentId: string }
   | { kind: "new_capsule"; capsuleId: string };
 
@@ -224,6 +226,40 @@ async function deliver(actorId: string, job: NotifyJob, origin: string, at: numb
           capsuleKey: cap.key,
           capsuleName: cap.name,
           url: `${capsuleUrl(cap.key)}?item=${w.id}`,
+          settingsUrl,
+        }),
+      );
+      return;
+    }
+    case "piece": {
+      const { data: p } = await admin
+        .from("work_item_collaborators")
+        .select(
+          "id, user_id, piece, status, is_lead, work_items(id, title, done, capsule_id, components(component_types(name)))",
+        )
+        .eq("id", job.pieceId)
+        .maybeSingle();
+      // Removed since (an Undo), finished already, or the item is done.
+      const w = p?.work_items as unknown as {
+        id: string;
+        title: string;
+        done: boolean;
+        capsule_id: string;
+        components: { component_types: { name: string } | null } | null;
+      } | null;
+      if (!p || !w || p.user_id !== job.userId || p.status === "done" || w.done) return;
+      const cap = await capsuleInfo(admin, w.capsule_id);
+      if (!cap) return;
+      await send(admin, actorId, job.userId, (actor) =>
+        pieceEmail({
+          actor,
+          title: w.title,
+          component: w.components?.component_types?.name ?? "a component",
+          piece: p.piece,
+          lead: p.is_lead,
+          capsuleKey: cap.key,
+          capsuleName: cap.name,
+          url: `${capsuleUrl(cap.key)}?item=${w.id}&open=1`,
           settingsUrl,
         }),
       );

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { notifyLater } from "@/lib/notify";
 import { createClient } from "@/lib/supabase/server";
 import type { Status } from "@/lib/design";
+import type { ItemStatus } from "@/lib/work-items";
 
 /*
  * Capsule, component and work item changes. Each runs as the signed-in
@@ -142,6 +143,11 @@ export async function addWorkItem(input: {
   assigneeId?: string | null;
   done?: boolean;
   position?: number;
+  /** For Undo: the item's status, notes and pieces as they were. */
+  status?: ItemStatus;
+  statusManual?: boolean;
+  note?: string | null;
+  pieces?: PieceInput[];
 }): Promise<Result<{ id: string }>> {
   if (!input.title.trim()) return { ok: false, error: "Give the work item a title." };
   const { supabase, userId } = await db();
@@ -157,10 +163,33 @@ export async function addWorkItem(input: {
       done: input.done ?? false,
       position: input.position ?? 0,
       created_by: userId,
+      ...(input.status && { status: input.status }),
+      ...(input.note && { note: input.note }),
     })
     .select("id")
     .single();
   if (error) return { ok: false, error: explain(error) };
+  if (input.pieces?.length) {
+    const { error: e2 } = await supabase.from("work_item_collaborators").insert(
+      input.pieces.map((p) => ({
+        id: p.id,
+        org_id: input.orgId,
+        capsule_id: input.capsuleId,
+        work_item_id: data.id,
+        user_id: p.userId,
+        piece: p.piece,
+        status: p.status,
+        is_lead: p.isLead,
+        created_by: userId,
+      })),
+    );
+    if (e2) return { ok: false, error: explain(e2) };
+    if (input.statusManual)
+      await supabase
+        .from("work_items")
+        .update({ status: input.status, status_manual: true })
+        .eq("id", data.id);
+  }
   refresh();
   // Undo putting back a deleted item (input.id) isn't a new assignment.
   if (input.assigneeId && !input.id && !input.done)
@@ -170,10 +199,19 @@ export async function addWorkItem(input: {
 
 export async function updateWorkItem(
   id: string,
-  patch: Partial<{ title: string; done: boolean; assignee_id: string | null }>,
+  patch: Partial<{
+    title: string;
+    done: boolean;
+    assignee_id: string | null;
+    status: ItemStatus;
+    status_manual: boolean;
+    note: string | null;
+  }>,
 ): Promise<Result> {
   if (patch.title !== undefined && !patch.title.trim())
     return { ok: false, error: "A work item needs a title." };
+  if (patch.note !== undefined && patch.note !== null && patch.note.length > 5000)
+    return { ok: false, error: "Keep notes under 5,000 characters." };
   const { supabase, userId } = await db();
   const { data, error } = await supabase.from("work_items").update(patch).eq("id", id).select("id");
   if (error) return { ok: false, error: explain(error) };
@@ -190,6 +228,80 @@ export async function deleteWorkItem(id: string): Promise<Result> {
   if (error) return { ok: false, error: explain(error) };
   if (data?.length) refresh();
   return data?.length ? { ok: true } : { ok: false, error: NOT_ALLOWED };
+}
+
+// Collaborators on a work item (step 12) ----------------------------------------
+
+export type PieceInput = {
+  /** Set when Undo puts a removed collaborator back, so it keeps its id. */
+  id?: string;
+  userId: string;
+  piece: string;
+  status: ItemStatus;
+  isLead: boolean;
+};
+
+export async function addPiece(input: {
+  orgId: string;
+  capsuleId: string;
+  itemId: string;
+  piece: PieceInput;
+}): Promise<Result<{ id: string }>> {
+  if (input.piece.piece.length > 80) return { ok: false, error: "Keep it under 80 characters." };
+  const { supabase, userId } = await db();
+  const { data, error } = await supabase
+    .from("work_item_collaborators")
+    .insert({
+      ...(input.piece.id && { id: input.piece.id }),
+      org_id: input.orgId,
+      capsule_id: input.capsuleId,
+      work_item_id: input.itemId,
+      user_id: input.piece.userId,
+      piece: input.piece.piece.trim(),
+      status: input.piece.status,
+      is_lead: input.piece.isLead,
+      created_by: userId,
+    })
+    .select("id")
+    .single();
+  if (error) return { ok: false, error: explain(error) };
+  refresh();
+  if (!input.piece.id)
+    await notifyLater(userId, { kind: "piece", pieceId: data.id, userId: input.piece.userId });
+  return { ok: true, data: { id: data.id } };
+}
+
+export async function updatePiece(
+  id: string,
+  patch: Partial<{ piece: string; status: ItemStatus; is_lead: boolean }>,
+): Promise<Result> {
+  if (patch.piece !== undefined) {
+    patch = { ...patch, piece: patch.piece.trim() };
+    if (patch.piece!.length > 80) return { ok: false, error: "Keep it under 80 characters." };
+  }
+  const { supabase } = await db();
+  const { data, error } = await supabase
+    .from("work_item_collaborators")
+    .update(patch)
+    .eq("id", id)
+    .select("id");
+  if (error) return { ok: false, error: explain(error) };
+  if (!data?.length) return { ok: false, error: NOT_ALLOWED };
+  refresh();
+  return { ok: true };
+}
+
+export async function removePiece(id: string): Promise<Result> {
+  const { supabase } = await db();
+  const { data, error } = await supabase
+    .from("work_item_collaborators")
+    .delete()
+    .eq("id", id)
+    .select("id");
+  if (error) return { ok: false, error: explain(error) };
+  if (!data?.length) return { ok: false, error: NOT_ALLOWED };
+  refresh();
+  return { ok: true };
 }
 
 // Adding and removing components (capsule owner) --------------------------------

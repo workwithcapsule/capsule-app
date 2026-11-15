@@ -365,6 +365,139 @@ export async function seedExamples(admin: Admin, me: Me) {
     "Adding a collaborator",
   );
   await follow(ex1, mate.bob, 30);
+
+  // Work item collaborators and statuses (step 12). "Ship the leaderboard
+  // page" has three people on it, you as the lead, and follows their pieces
+  // (In Progress). On Jon's runbook you have a part (it shows on Home), and
+  // Jon set the status by hand, so the drawer offers "Use suggestion".
+  const item = async (
+    comp: string,
+    title: string,
+    assignee: string | null,
+    extra: Record<string, unknown> = {},
+  ) =>
+    (
+      await must(
+        admin
+          .from("work_items")
+          .insert({
+            org_id: org,
+            capsule_id: ex1,
+            component_id: comp,
+            title,
+            assignee_id: assignee,
+            position: 3,
+            created_by: me.id,
+            created_at: ago(30),
+            ...extra,
+          })
+          .select("id")
+          .single(),
+        "Adding a work item",
+      )
+    ).id as string;
+  const pieces = (
+    itemId: string,
+    list: [string, string, "not_started" | "in_progress" | "in_review" | "done", boolean?][],
+  ) =>
+    must(
+      admin.from("work_item_collaborators").insert(
+        list.map(([user_id, piece, status, is_lead]) => ({
+          org_id: org,
+          capsule_id: ex1,
+          work_item_id: itemId,
+          user_id,
+          piece,
+          status,
+          is_lead: is_lead ?? false,
+          created_by: me.id,
+          created_at: ago(28),
+        })),
+      ),
+      "Adding collaborators",
+    );
+  const shipPage = await item(ex1a, "Ship the partner leaderboard page", me.id, {
+    note: "Ranking comes from the API; the page shows the top 50 partners and what each can do next.",
+  });
+  await pieces(shipPage, [
+    [mate.dana, "Ranking service", "done"],
+    [mate.jon, "Leaderboard UI", "in_progress"],
+    [me.id, "Final review", "not_started", true],
+  ]);
+  const runbook = (
+    await must(
+      admin
+        .from("work_items")
+        .select("id")
+        .eq("component_id", ex1c)
+        .eq("title", "Write the launch runbook")
+        .single(),
+      "Finding the runbook",
+    )
+  ).id as string;
+  await pieces(runbook, [[me.id, "Escalation steps", "in_progress"]]);
+  await must(
+    admin.from("work_items").update({ status: "in_review", status_manual: true }).eq("id", runbook),
+    "Setting the runbook's status",
+  );
+  const piece = (title: string, comp: string, type: { name: string }) => ({
+    title,
+    component_id: comp,
+    component: type.name,
+  });
+  await event(
+    ex1,
+    me.id,
+    "piece_added",
+    {
+      item_id: shipPage,
+      ...piece("Ship the partner leaderboard page", ex1a, A),
+      user: mate.jon,
+      piece: "Leaderboard UI",
+    },
+    28,
+  );
+  await event(
+    ex1,
+    mate.dana,
+    "piece_changed",
+    {
+      item_id: shipPage,
+      ...piece("Ship the partner leaderboard page", ex1a, A),
+      user: mate.dana,
+      piece: "Ranking service",
+      field: "status",
+      from: "in_progress",
+      to: "done",
+    },
+    4,
+  );
+  await event(
+    ex1,
+    mate.jon,
+    "piece_added",
+    {
+      item_id: runbook,
+      ...piece("Write the launch runbook", ex1c, C),
+      user: me.id,
+      piece: "Escalation steps",
+    },
+    25,
+  );
+  await event(
+    ex1,
+    mate.jon,
+    "item_changed",
+    {
+      item_id: runbook,
+      ...piece("Write the launch runbook", ex1c, C),
+      field: "status",
+      from: "in_progress",
+      to: "in_review",
+    },
+    3,
+  );
+
   await event(ex1, me.id, "capsule_created", { name: "Partner leaderboard launch" }, 24 * 6);
   await event(
     ex1,

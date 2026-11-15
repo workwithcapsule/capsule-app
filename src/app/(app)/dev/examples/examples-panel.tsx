@@ -25,11 +25,11 @@ const SEARCH =
   "Search: press ⌘K (Ctrl+K) and type “EX-1”, “ex 3” or a word like “portal”. EX-4 shows “Can view” because you’re not on it.";
 
 const HOME =
-  "Home: your Needs your attention gets an overdue item (EX-2), a due-soon item (EX-1), a component with no owner (EX-1), components you own and two @mentions. Activity today fills from all four.";
+  "Home: your Needs your attention gets an overdue item (EX-2), a due-soon item (EX-1), a component with no owner (EX-1), components you own, two @mentions and your part of Jon’s runbook (EX-1). Activity today fills from all four.";
 
 const ROLES: Record<string, string> = {
   "EX-1":
-    "You own it: teammates on components, items assigned to you, a blocked component, a comment that @mentions you, and attachments (a Google Doc, a Figma file and a PDF you can open).",
+    "You own it: teammates on components, items assigned to you, a blocked component, a comment that @mentions you, and attachments (a Google Doc, a Figma file and a PDF you can open). Work items with several people: click “Ship the partner leaderboard page” (you lead it; its status follows the pieces) or “Write the launch runbook” (Jon set its status by hand, so it offers Use suggestion).",
   "EX-2": "You work on it: Dana owns it, you own one component and have an item.",
   "EX-3":
     "You follow it: the follower view, its filtered Activity, “+1 this week” and a read-only attachment.",

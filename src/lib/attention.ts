@@ -2,7 +2,8 @@ import type { ComponentColor } from "@/lib/design";
 
 /** One row of Needs your attention (public.needs_attention, step 8). */
 export type AttentionRow = {
-  kind: "item" | "component" | "no_owner" | "mention";
+  /** piece: your part of a work item (title is the item, body your part). */
+  kind: "item" | "component" | "no_owner" | "mention" | "piece";
   targetId: string;
   capsuleId: string;
   capsuleKey: string;
@@ -66,6 +67,7 @@ export function sortAttention(rows: AttentionRow[]): AttentionRow[] {
 export function attentionHref(r: AttentionRow): string {
   const base = `/capsules/${r.capsuleKey.toLowerCase()}`;
   if (r.kind === "item") return `${base}?item=${r.targetId}`;
+  if (r.kind === "piece") return `${base}?piece=${r.targetId}`;
   if (r.kind === "mention") return `${base}?activity=1`;
   return `${base}?component=${r.componentId}`;
 }

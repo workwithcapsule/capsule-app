@@ -25,14 +25,17 @@ import { cn } from "@/lib/utils";
 const trigger =
   "-mx-1.5 inline-flex max-w-full items-center gap-1.5 rounded-lg px-1.5 py-0.5 text-left hover:bg-subtle data-[state=open]:bg-subtle";
 
-export function StatusPicker({
+export function StatusPicker<S extends Status = Status>({
   value,
   onPick,
   label,
+  options,
 }: {
-  value: Status;
-  onPick: (s: Status) => void;
+  value: S;
+  onPick: (s: S) => void;
   label: string;
+  /** Limit the choices (work items have no Blocked). */
+  options?: readonly S[];
 }) {
   return (
     <DropdownMenu modal={false}>
@@ -42,7 +45,7 @@ export function StatusPicker({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-[180px]">
         <DropdownMenuLabel>{label}</DropdownMenuLabel>
-        {STATUSES.map((s) => (
+        {(options ?? (STATUSES as unknown as readonly S[])).map((s) => (
           <DropdownMenuItem key={s} onSelect={() => s !== value && onPick(s)}>
             <StatusPill status={s} />
             {s === value && <Check size={14} className="ml-auto text-muted-foreground" />}

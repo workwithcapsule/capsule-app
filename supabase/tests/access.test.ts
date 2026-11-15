@@ -57,6 +57,40 @@ const seeEveryAcmeRow = (db: Db) =>
     [ORG.acme, P.christina],
   );
 
+/** Switches who is signed in, inside the same transaction (to set things up as someone else). */
+const signIn = (db: Db, who: "christina" | "dana" | "jon" | "maya" | "bob") =>
+  db.query("select set_config('request.jwt.claims', $1, true)", [
+    JSON.stringify({ sub: P[who], role: "authenticated", aud: "authenticated" }),
+  ]);
+
+/** Adds a collaborator to Dana's API work item, signed in as Dana (she owns Tech). */
+async function addPiece(
+  db: Db,
+  user: string,
+  piece: string,
+  back: "christina" | "dana" | "jon" | "maya" | "bob",
+  lead = false,
+) {
+  await signIn(db, "dana");
+  const id = await value<string>(
+    db,
+    `insert into public.work_item_collaborators
+       (org_id, capsule_id, work_item_id, user_id, piece, is_lead, created_by)
+     values ($1, $2, $3, $4, $5, $6, $7) returning id`,
+    [ORG.acme, CAPSULE.en1, ITEM.techApi, user, piece, lead, P.dana],
+  );
+  await signIn(db, back);
+  return id!;
+}
+
+const itemStatus = (db: Db) =>
+  value<string>(
+    db,
+    `select status || ':' || done || ':' || status_manual || ':' || (done_at is not null)
+     from public.work_items where id = $1`,
+    [ITEM.techApi],
+  );
+
 const groups: Group[] = [
   {
     title: "Seeing capsules",
@@ -2180,6 +2214,330 @@ const groups: Group[] = [
            values ($1, $2, $3, 'comment_deleted', jsonb_build_object('comment_id', $4::text))`,
           [ORG.acme, CAPSULE.en2, P.christina, EVENT.en1Comment],
         ),
+      },
+    ],
+  },
+  {
+    title: "Work item statuses and collaborators",
+    cases: [
+      {
+        who: "dana",
+        tries: "add Jon to her work item with a piece, which puts him on the Tech team",
+        expect: "allowed",
+        run: async (db) => {
+          await addPiece(db, P.jon, "Ranking service", "dana");
+          const onTeam = await value<string>(
+            db,
+            `select source from public.component_people where component_id = $1 and user_id = $2`,
+            [COMP.en1Tech, P.jon],
+          );
+          const logged = await value<string>(
+            db,
+            `select kind || ':' || (data ->> 'piece') from public.events
+             where capsule_id = $1 and kind like 'piece%'`,
+            [CAPSULE.en1],
+          );
+          return check(
+            onTeam === "assignment" && logged === "piece_added:Ranking service",
+            `team: ${onTeam}; logged ${logged}`,
+          );
+        },
+      },
+      {
+        who: "maya",
+        tries: "add herself as a collaborator on Dana's work item",
+        expect: "blocked",
+        run: write(
+          `insert into public.work_item_collaborators
+             (org_id, capsule_id, work_item_id, user_id, piece, created_by)
+           values ($1, $2, $3, $4, 'Mine', $4)`,
+          [ORG.acme, CAPSULE.en1, ITEM.techApi, P.maya],
+        ),
+      },
+      {
+        who: "jon",
+        tries: "add Maya to an item he's assigned (he can manage his own item)",
+        expect: "allowed",
+        run: write(
+          `insert into public.work_item_collaborators
+             (org_id, capsule_id, work_item_id, user_id, piece, created_by)
+           values ($1, $2, $3, $4, 'Docs', $5)`,
+          [ORG.acme, CAPSULE.en1, ITEM.opsRunbook, P.maya, P.jon],
+        ),
+      },
+      {
+        who: "jon",
+        tries: "start his piece, which moves the item to In progress without anyone setting it",
+        expect: "allowed",
+        run: async (db) => {
+          const piece = await addPiece(db, P.jon, "Ranking service", "jon");
+          await addPiece(db, P.christina, "Sales copy", "jon");
+          const r = await attempt(
+            db,
+            `update public.work_item_collaborators set status = 'in_progress' where id = $1`,
+            [piece],
+          );
+          const st = await itemStatus(db);
+          const statusLogged = await value<number>(
+            db,
+            `select count(*)::int from public.events
+             where capsule_id = $1 and kind = 'item_changed' and data ->> 'field' = 'status'`,
+            [CAPSULE.en1],
+          );
+          return check(
+            r.allowed && st === "in_progress:false:false:false" && statusLogged === 0,
+            `${r.detail}; item ${st}; status entries ${statusLogged}`,
+          );
+        },
+      },
+      {
+        who: "jon",
+        tries: "finish the last piece, which checks the whole item off",
+        expect: "allowed",
+        run: async (db) => {
+          const piece = await addPiece(db, P.jon, "Ranking service", "jon");
+          await attempt(
+            db,
+            `update public.work_item_collaborators set status = 'done' where id = $1`,
+            [piece],
+          );
+          return check(
+            (await itemStatus(db)) === "done:true:false:true",
+            String(await itemStatus(db)),
+          );
+        },
+      },
+      {
+        who: "jon",
+        tries: "change the status of Christina's piece",
+        expect: "blocked",
+        run: async (db) => {
+          await addPiece(db, P.jon, "Ranking service", "jon");
+          const hers = await addPiece(db, P.christina, "Sales copy", "jon");
+          return attempt(
+            db,
+            `update public.work_item_collaborators set status = 'done' where id = $1`,
+            [hers],
+          );
+        },
+      },
+      {
+        who: "jon",
+        tries: "make himself the lead",
+        expect: "blocked",
+        run: async (db) => {
+          const piece = await addPiece(db, P.jon, "Ranking service", "jon");
+          return attempt(
+            db,
+            `update public.work_item_collaborators set is_lead = true where id = $1`,
+            [piece],
+          );
+        },
+      },
+      {
+        who: "jon",
+        tries: "as the lead, set the item to In review and add Maya to it",
+        expect: "allowed",
+        run: async (db) => {
+          await addPiece(db, P.jon, "Ranking service", "jon", true);
+          const st = await attempt(
+            db,
+            `update public.work_items set status = 'in_review' where id = $1`,
+            [ITEM.techApi],
+          );
+          const add = await attempt(
+            db,
+            `insert into public.work_item_collaborators
+               (org_id, capsule_id, work_item_id, user_id, piece, created_by)
+             values ($1, $2, $3, $4, 'UI', $5)`,
+            [ORG.acme, CAPSULE.en1, ITEM.techApi, P.maya, P.jon],
+          );
+          const now = await itemStatus(db);
+          return check(
+            st.allowed && add.allowed && now === "in_review:false:true:false",
+            `${st.detail}; ${add.detail}; item ${now}`,
+          );
+        },
+      },
+      {
+        who: "jon",
+        tries: "as a collaborator (not the lead), set the item's status",
+        expect: "blocked",
+        run: async (db) => {
+          await addPiece(db, P.jon, "Ranking service", "jon");
+          return attempt(db, `update public.work_items set status = 'in_review' where id = $1`, [
+            ITEM.techApi,
+          ]);
+        },
+      },
+      {
+        who: "dana",
+        tries: "make Christina the lead, which takes it from Jon",
+        expect: "allowed",
+        run: async (db) => {
+          await addPiece(db, P.jon, "Ranking service", "dana", true);
+          const hers = await addPiece(db, P.christina, "Sales copy", "dana");
+          await attempt(
+            db,
+            `update public.work_item_collaborators set is_lead = true where id = $1`,
+            [hers],
+          );
+          const leads = await value<string>(
+            db,
+            `select string_agg(user_id::text, ',') from public.work_item_collaborators
+             where work_item_id = $1 and is_lead`,
+            [ITEM.techApi],
+          );
+          return check(leads === P.christina, `leads: ${leads}`);
+        },
+      },
+      {
+        who: "dana",
+        tries: "set the item's status by hand, then go back to the suggestion",
+        expect: "allowed",
+        run: async (db) => {
+          const piece = await addPiece(db, P.jon, "Ranking service", "dana");
+          await attempt(db, `update public.work_items set status = 'in_review' where id = $1`, [
+            ITEM.techApi,
+          ]);
+          // The pieces moving on doesn't change a status set by hand.
+          await attempt(
+            db,
+            `update public.work_item_collaborators set status = 'in_progress' where id = $1`,
+            [piece],
+          );
+          const byHand = await itemStatus(db);
+          await attempt(db, `update public.work_items set status_manual = false where id = $1`, [
+            ITEM.techApi,
+          ]);
+          const back = await itemStatus(db);
+          return check(
+            byHand === "in_review:false:true:false" && back === "in_progress:false:false:false",
+            `by hand ${byHand}; suggestion ${back}`,
+          );
+        },
+      },
+      {
+        who: "dana",
+        tries: "check off her item, which sets its status to Done",
+        expect: "allowed",
+        run: async (db) => {
+          await attempt(db, `update public.work_items set done = true where id = $1`, [
+            ITEM.techApi,
+          ]);
+          const st = await itemStatus(db);
+          await attempt(db, `update public.work_items set status = 'in_progress' where id = $1`, [
+            ITEM.techApi,
+          ]);
+          const reopened = await itemStatus(db);
+          return check(
+            st === "done:true:false:true" && reopened === "in_progress:false:false:false",
+            `checked ${st}; reopened ${reopened}`,
+          );
+        },
+      },
+      {
+        who: "dana",
+        tries: "set a work item to Blocked (not a work item status)",
+        expect: "blocked",
+        run: write(`update public.work_items set status = 'blocked' where id = $1`, [ITEM.techApi]),
+      },
+      {
+        who: "maya",
+        tries: "set the status of Dana's work item",
+        expect: "blocked",
+        run: write(`update public.work_items set status = 'in_progress' where id = $1`, [
+          ITEM.techApi,
+        ]),
+      },
+      {
+        who: "bob",
+        tries: "see the collaborators on EN-1's work items (as a follower)",
+        expect: "allowed",
+        run: async (db) => {
+          await addPiece(db, P.jon, "Ranking service", "bob");
+          return attempt(
+            db,
+            `select 1 from public.work_item_collaborators where work_item_id = $1`,
+            [ITEM.techApi],
+          );
+        },
+      },
+      {
+        who: "bob",
+        tries: "change a piece (followers are read-only)",
+        expect: "blocked",
+        run: async (db) => {
+          const piece = await addPiece(db, P.jon, "Ranking service", "bob");
+          return attempt(
+            db,
+            `update public.work_item_collaborators set piece = 'Mine' where id = $1`,
+            [piece],
+          );
+        },
+      },
+      {
+        who: "olga",
+        tries: "see collaborators on Acme work items",
+        expect: "blocked",
+        run: read(`select 1 from public.work_item_collaborators`),
+      },
+      {
+        who: "jon",
+        tries: "leave the item himself, which takes him off the Tech team again",
+        expect: "allowed",
+        run: async (db) => {
+          const piece = await addPiece(db, P.jon, "Ranking service", "jon");
+          const r = await attempt(db, `delete from public.work_item_collaborators where id = $1`, [
+            piece,
+          ]);
+          const onTeam = await value<boolean>(
+            db,
+            `select exists (select 1 from public.component_people where component_id = $1 and user_id = $2)`,
+            [COMP.en1Tech, P.jon],
+          );
+          return check(r.allowed && onTeam === false, `${r.detail}; still on Tech: ${onTeam}`);
+        },
+      },
+      {
+        who: "jon",
+        tries: "see his piece in Needs your attention",
+        expect: "allowed",
+        run: async (db) => {
+          const piece = await addPiece(db, P.jon, "Ranking service", "jon");
+          const row = await value<string>(
+            db,
+            `select kind || ':' || body from public.needs_attention() where target_id = $1`,
+            [piece],
+          );
+          return check(row === "piece:Ranking service", String(row));
+        },
+      },
+      {
+        who: "christina",
+        tries: "remove Tech with its work items, then undo, getting the collaborators back",
+        expect: "allowed",
+        run: async (db) => {
+          await addPiece(db, P.jon, "Ranking service", "christina", true);
+          const snap = await value<object>(db, `select public.remove_component($1, null)`, [
+            COMP.en1Tech,
+          ]);
+          await value(db, `select public.restore_component($1::jsonb)`, [JSON.stringify(snap)]);
+          const back = await value<string>(
+            db,
+            `select piece || ':' || is_lead from public.work_item_collaborators where work_item_id = $1`,
+            [ITEM.techApi],
+          );
+          const onTeam = await value<boolean>(
+            db,
+            `select exists (select 1 from public.component_people where component_id = $1 and user_id = $2)`,
+            [COMP.en1Tech, P.jon],
+          );
+          return check(
+            back === "Ranking service:true" && onTeam === true,
+            `${back}; on Tech ${onTeam}`,
+          );
+        },
       },
     ],
   },

@@ -53,7 +53,9 @@ export function Toaster({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={async () => {
-                  dismiss(t.id);
+                  // Hide it just after this click, so an open drawer can still
+                  // tell the click came from a toast and stays open.
+                  setTimeout(() => dismiss(t.id), 0);
                   await t.undo?.();
                 }}
                 className="rounded-full px-2.5 py-1 text-[13px] font-semibold text-bg underline underline-offset-[3px] focus-visible:outline-bg"

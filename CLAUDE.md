@@ -29,7 +29,7 @@ If two docs disagree, `v1-scope.md` wins, then `build-decisions.md`, then `desig
 
 ## Data rules
 
-- Start from the schema in `tech-stack.md`. **For V1, build only:** orgs, users, org_members, spaces, space_members, component_types, capsules, components, component_people, work_items, followers, events, mentions, plus a new **attachments** table (capsule_id, component_id optional, kind file or link, name, url or storage path, link type, size, added_by). Also **dismissals** (rows removed from Needs your attention, per person).
+- Start from the schema in `tech-stack.md`. **For V1, build only:** orgs, users, org_members, spaces, space_members, component_types, capsules, components, component_people, work_items, followers, events, mentions, plus a new **attachments** table (capsule_id, component_id optional, kind file or link, name, url or storage path, link type, size, added_by). Also **dismissals** (rows removed from Needs your attention, per person) and **work_item_collaborators** (step 12: people on a work item, each with their part and status).
 - Leave out for now: agents, integrations, drafts, queue_items and capsule_old_keys. In V1, "Needs your attention" is worked out by query from work items and components.
 - Keep the forward-compatible columns that cost nothing, such as `spaces.is_private` (always false in V1), `capsules.visibility` (always org in V1) and the work item source fields (always none).
 - **Every row carries its org_id.**

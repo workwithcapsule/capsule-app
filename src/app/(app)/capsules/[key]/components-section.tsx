@@ -5,12 +5,13 @@ import {
   CalendarBlank,
   Check,
   DotsThree,
+  Notepad,
   PencilSimple,
   Plus,
   User,
   X,
 } from "@phosphor-icons/react";
-import { Avatar } from "@/components/avatar";
+import { Avatar, AvatarStack } from "@/components/avatar";
 import { EditableText } from "@/components/editable-text";
 import { DateField, PersonPicker, StatusPicker } from "@/components/pickers";
 import { StatusPill } from "@/components/status-pill";
@@ -35,10 +36,11 @@ import {
   removeComponent,
   restoreComponent,
   updateComponent,
-  updateWorkItem,
 } from "../actions";
 import type { useCapsule } from "./use-capsule";
 import { NativeSelect } from "@/components/ui/native-select";
+import { piecesDone } from "@/lib/work-items";
+import { useItemActions, WorkItemDrawer } from "./work-item-drawer";
 
 type Change = ReturnType<typeof useCapsule>["change"];
 
@@ -89,8 +91,8 @@ export function ComponentsSection({
   view: CapsuleData;
   perms: Permissions;
   change: Change;
-  /** Opened from Home: select this component and highlight this item. */
-  focus?: { item: string | null; component: string | null };
+  /** Opened from Home: select this component and highlight (or open) this item. */
+  focus?: { item: string | null; component: string | null; open?: boolean };
 }) {
   const { mine, others } = orderComponents(view);
   const ordered = [...mine, ...others];
@@ -98,10 +100,16 @@ export function ComponentsSection({
   // Follow a new ?item= or ?component= when it changes on the same page.
   const focusKey = `${focus?.component}|${focus?.item}`;
   const [seenFocus, setSeenFocus] = useState(focusKey);
+  // The work item open in the drawer.
+  const [openItem, setOpenItem] = useState<string | null>(
+    focus?.open ? (focus.item ?? null) : null,
+  );
   if (focusKey !== seenFocus) {
     setSeenFocus(focusKey);
     if (focus?.component) setSelected(focus.component);
+    if (focus?.open && focus.item) setOpenItem(focus.item);
   }
+  const drawerItem = view.items.find((i) => i.id === openItem) ?? null;
   const [editing, setEditing] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
   const current = ordered.find((k) => k.id === selected) ?? ordered[0] ?? null;
@@ -299,6 +307,7 @@ export function ComponentsSection({
             change={change}
             k={current}
             focusItem={focus?.item ?? null}
+            onOpenItem={setOpenItem}
           />
         ) : (
           <p className="p-5 text-[13px] text-muted-foreground">
@@ -307,6 +316,13 @@ export function ComponentsSection({
           </p>
         )}
       </div>
+      <WorkItemDrawer
+        item={drawerItem}
+        view={view}
+        perms={perms}
+        change={change}
+        onClose={() => setOpenItem(null)}
+      />
     </section>
   );
 }
@@ -379,12 +395,14 @@ function ComponentPanel({
   change,
   k,
   focusItem,
+  onOpenItem,
 }: {
   view: CapsuleData;
   perms: Permissions;
   change: Change;
   k: CapsuleComponent;
   focusItem: string | null;
+  onOpenItem: (id: string) => void;
 }) {
   const toast = useToast();
   const canEdit = perms.editComponent(k.id);
@@ -421,6 +439,9 @@ function ComponentPanel({
       assigneeId: null,
       createdBy: view.me.id,
       position: items.length,
+      status: "not_started",
+      statusManual: false,
+      note: null,
     };
     change({ type: "addItem", item: temp }, () =>
       addWorkItem({
@@ -551,6 +572,7 @@ function ComponentPanel({
                 change={change}
                 componentName={k.name}
                 highlight={item.id === focusItem}
+                onOpen={() => onOpenItem(item.id)}
               />
             ))}
           </ul>
@@ -604,6 +626,7 @@ function WorkItemRow({
   change,
   componentName,
   highlight,
+  onOpen,
 }: {
   item: WorkItem;
   view: CapsuleData;
@@ -611,47 +634,20 @@ function WorkItemRow({
   change: Change;
   componentName: string;
   highlight: boolean;
+  onOpen: () => void;
 }) {
-  const toast = useToast();
   const temp = item.id.startsWith("temp-");
   const canComplete = !temp && perms.completeItem(item);
-  const canRename = !temp && perms.renameItem(item);
   const canDelete = !temp && perms.deleteItem(item);
   const assign = temp ? "none" : perms.assignOptions(item);
   const assignee = view.people.find((p) => p.id === item.assigneeId) ?? null;
   const strike = item.done ? "text-faint line-through" : "";
-
-  function toggle() {
-    const next = !item.done;
-    change(
-      { type: "item", id: item.id, patch: { done: next } },
-      () => updateWorkItem(item.id, { done: next }),
-      {
-        message: next ? `Checked off “${item.title}”.` : `“${item.title}” is open again.`,
-        undo: {
-          op: { type: "item", id: item.id, patch: { done: !next } },
-          save: () => updateWorkItem(item.id, { done: !next }),
-        },
-      },
-    );
-  }
-
-  function reassign(assigneeId: string | null) {
-    const name = view.people.find((p) => p.id === assigneeId)?.name;
-    change(
-      { type: "item", id: item.id, patch: { assigneeId } },
-      () => updateWorkItem(item.id, { assignee_id: assigneeId }),
-      {
-        message: assigneeId
-          ? `Assigned to ${assigneeId === view.me.id ? "you" : name}.`
-          : "Unassigned.",
-        undo: {
-          op: { type: "item", id: item.id, patch: { assigneeId: item.assigneeId } },
-          save: () => updateWorkItem(item.id, { assignee_id: item.assigneeId }),
-        },
-      },
-    );
-  }
+  const actions = useItemActions(item, view, change);
+  const pieces = view.pieces.filter((p) => p.itemId === item.id);
+  const onIt = pieces
+    .map((p) => view.people.find((x) => x.id === p.userId))
+    .filter((x): x is NonNullable<typeof x> => !!x);
+  const showStatus = item.status === "in_progress" || item.status === "in_review";
 
   function remove() {
     change({ type: "removeItem", id: item.id }, () => deleteWorkItem(item.id), {
@@ -668,6 +664,16 @@ function WorkItemRow({
             assigneeId: item.assigneeId,
             done: item.done,
             position: item.position,
+            status: item.status,
+            statusManual: item.statusManual,
+            note: item.note,
+            pieces: pieces.map((p) => ({
+              id: p.id,
+              userId: p.userId,
+              piece: p.piece,
+              status: p.status,
+              isLead: p.isLead,
+            })),
           }),
       },
     });
@@ -677,7 +683,7 @@ function WorkItemRow({
     <li
       ref={highlight ? scrollToMe : undefined}
       className={cn(
-        "group -mx-2 flex min-h-12 items-center gap-3 rounded-lg border-b border-divider px-2 py-1.5 hover:bg-hover",
+        "group -mx-2 flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border-b border-divider px-2 py-1.5 hover:bg-hover",
         highlight && "animate-hl",
       )}
     >
@@ -686,41 +692,48 @@ function WorkItemRow({
           type="checkbox"
           id={`wi-${item.id}`}
           checked={item.done}
-          onChange={toggle}
+          onChange={actions.toggle}
           aria-label={`${item.done ? "Reopen" : "Check off"} ${item.title}`}
           className="size-[18px] flex-none accent-[#A39A94]"
         />
       ) : (
         <span
           aria-hidden="true"
-          title="Only the assignee or an owner can check this off"
+          title="Only the assignee, the lead or an owner can check this off"
           className="flex size-[18px] flex-none items-center justify-center rounded-[5px] border-[1.5px] border-dash bg-subtle text-muted-foreground"
         >
           {item.done && <Check size={12} weight="bold" />}
         </span>
       )}
-      <span className={cn("min-w-0 flex-1", strike)}>
-        {canRename ? (
-          <EditableText
-            value={item.title}
-            label="Work item"
-            required
-            maxLength={500}
-            onSave={async (title) => {
-              const r = await updateWorkItem(item.id, { title });
-              if (!r.ok) toast(r.error);
-              return r.ok;
-            }}
-            className={strike}
-            inputClassName="h-8"
-          />
-        ) : (
-          <>
-            {item.title}
-            <span className="sr-only">{item.done ? " (done)" : " (not done)"}</span>
-          </>
-        )}
+      <span className="flex min-w-0 flex-[1_1_200px] items-center gap-2">
+        <button
+          type="button"
+          disabled={temp}
+          onClick={onOpen}
+          className={cn(
+            "min-w-0 truncate rounded-md text-left hover:underline hover:decoration-border-strong hover:underline-offset-4",
+            strike,
+          )}
+        >
+          {item.title}
+          <span className="sr-only">
+            {item.done ? " (done)" : ` (${STATUS_META[item.status].label})`}, open details
+          </span>
+        </button>
+        {item.note && <Notepad size={14} className="flex-none text-faint" aria-label="Has notes" />}
+        {showStatus && <StatusPill status={item.status} className="h-5 flex-none px-2" />}
       </span>
+      {pieces.length > 0 && (
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex flex-none items-center gap-1.5 rounded-full py-0.5 pr-2 text-xs text-muted-foreground hover:bg-subtle"
+          aria-label={`${pieces.length} collaborator${pieces.length === 1 ? "" : "s"}, ${piecesDone(pieces)}`}
+        >
+          <AvatarStack people={onIt} max={3} />
+          {piecesDone(pieces)}
+        </button>
+      )}
       <span className="flex min-w-28 flex-none items-center gap-1.5 text-[13px] text-muted-foreground">
         {assign === "none" ? (
           assignee ? (
@@ -746,7 +759,7 @@ function WorkItemRow({
             meId={view.me.id}
             emptyLabel="Unassigned"
             label={`Assignee for ${item.title}`}
-            onPick={reassign}
+            onPick={actions.reassign}
             className="font-normal text-muted-foreground"
           />
         )}

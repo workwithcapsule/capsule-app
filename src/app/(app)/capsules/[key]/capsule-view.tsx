@@ -17,16 +17,23 @@ import { useCapsule } from "./use-capsule";
  * comments are in the side panel. People not on the team get the follower
  * view. "Needs you here" lists your own rows from Home for this capsule.
  * Opening from Home (?item=, ?component=, ?activity=1) selects that exact
- * thing. Attachments sit under Components.
+ * thing (?piece= and ?open=1 open the work item's drawer). Attachments sit
+ * under Components.
  */
 export function CapsuleView({ initial }: { initial: CapsuleData }) {
   const { view, change } = useCapsule(initial);
   const perms = permissionsFor(view);
   const params = useSearchParams();
-  const focusItem = params.get("item");
+  // ?piece= (your part of an item, from Home) opens that item's drawer.
+  const piece = view.pieces.find((p) => p.id === params.get("piece"));
+  const focusItem = piece?.itemId ?? params.get("item");
   const focusComponent =
     view.items.find((i) => i.id === focusItem)?.componentId ?? params.get("component");
-  const focus = { item: focusItem, component: focusComponent };
+  const focus = {
+    item: focusItem,
+    component: focusComponent,
+    open: !!piece || params.get("open") === "1",
+  };
 
   return (
     <div className="mx-auto flex max-w-[1160px] flex-col gap-6 px-4 pt-6 pb-[120px] laptop:px-8">

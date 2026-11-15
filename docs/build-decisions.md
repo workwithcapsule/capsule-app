@@ -97,3 +97,10 @@ Answers Christina gave before the build started. These sit alongside `v1-scope.m
 47. **When notification emails go out:** about 20 seconds after the change, and only if it's still true then (so Undo cancels the email, and quick edits don't spam people). Nobody is emailed about their own actions; followers aren't emailed. One combined email per person when a capsule is created.
 48. **Turning emails off:** one switch in Settings → Profile ("Email me when I'm made an owner, assigned work or @mentioned"), on by default; every email links to it.
 49. **Search:** capsules only, by name or key, with recent capsules shown when the box is empty.
+
+## Step 12 answers (Nov. 15 2026)
+
+50. **Work item statuses:** Not started, In progress, In review and Done (no Blocked; that stays for capsules and components). The checkbox and Done stay in step: checking an item off makes it Done, and Done checks it off.
+51. **Work item detail view:** a 600px drawer from the right over the capsule page, like the prototype's drawer. Clicking a work item's title opens it. It has the title, status, assignee, notes, collaborators and the item's own Activity.
+52. **Overall status with several people:** suggested from their pieces (all done → Done, any in review → In review, any started → In progress). It follows the pieces until someone sets it by hand; then the drawer shows "Suggested from the pieces: X · Use suggestion". The assignee, the lead, the component owner and the capsule owner can set it.
+53. **Collaborators on a work item** (table `work_item_collaborators`): each has their part ("piece", up to 80 characters) and their own status; one can be the lead. They join the component's team like assignees. Each collaborator can change their own part and status, or leave. The assignee, the item's creator, the lead and the owners add and remove people and pick the lead. New collaborators get an email (the same 20-second rule) and a row on Home ("Your part: …"), except when they're also the assignee, where the item's own row covers it.
