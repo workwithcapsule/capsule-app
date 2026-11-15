@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { SearchPalette } from "@/components/shell/search-palette";
 import { SidebarContent, TopBar } from "@/components/shell/sidebar-content";
 import { LAPTOP_UP, WIDE, useMediaQuery } from "@/hooks/use-media-query";
 import type { ShellData } from "@/lib/shell-data";
@@ -107,6 +108,8 @@ export function AppShell({ children, data }: { children: React.ReactNode; data: 
           />
         </SheetContent>
       </Sheet>
+
+      <SearchPalette />
 
       <main id="main" tabIndex={-1} className="min-w-0 flex-1 outline-none">
         {children}

@@ -12,6 +12,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { CapsuleMark } from "@/components/logo";
+import { OPEN_SEARCH } from "@/components/shell/search-palette";
 import { ProfileMenu } from "@/components/shell/profile-menu";
 import { cn } from "@/lib/utils";
 import type { ShellData } from "@/lib/shell-data";
@@ -100,6 +101,10 @@ export function SidebarContent({
           type="button"
           title="Search"
           aria-label="Search"
+          onClick={() => {
+            onNavigate?.();
+            window.dispatchEvent(new Event(OPEN_SEARCH));
+          }}
           className="flex h-9 items-center gap-2 rounded-[10px] border border-border bg-surface px-3 text-sm text-muted-foreground hover:border-border-strong rail:mx-auto rail:w-11 rail:justify-center rail:px-0"
         >
           <MagnifyingGlass size={16} />

@@ -7,7 +7,6 @@ import { ColorIconPicker } from "@/components/color-icon-picker";
 import { AddLine, Card, Heading, Nav, Row, ServerError, SetupFrame } from "@/components/setup";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input, Label } from "@/components/ui/input";
-import { COMPONENT_COLORS, type ComponentColor } from "@/lib/design";
 import { isEmail, parseInvites, prefixError, suggestPrefix } from "@/lib/validation";
 import { finishOnboarding, saveAccount, saveComponents, saveSpaces, saveStep } from "./actions";
 import type { OnboardingComponent, OnboardingState } from "./types";
@@ -17,54 +16,13 @@ import type { OnboardingComponent, OnboardingState } from "./types";
  * and 14, V1 limits from v1-scope.md). Copy follows docs/prototype.html.
  */
 
-const STEPS = ["Your account", "Components", "Spaces", "Connect tools", "Invite teammates"];
+import { nextColor, SUGGESTED_COMPONENTS as SUGGESTED } from "@/lib/component-catalog";
 
-/** Components offered as one-click additions (prototype ORG_COMPS). */
-const SUGGESTED: Omit<OnboardingComponent, "key">[] = [
-  { name: "Tech", color: "blue", icon: "code", description: "Engineering, QA and release work." },
-  {
-    name: "Operations",
-    color: "teal",
-    icon: "cycle",
-    description: "Readiness, process and support handoff.",
-  },
-  {
-    name: "Sales",
-    color: "green",
-    icon: "chart",
-    description: "Enablement, training and customer comms.",
-  },
-  {
-    name: "Marketing",
-    color: "orange",
-    icon: "megaphone",
-    description: "Messaging, launch content and campaigns.",
-  },
-  {
-    name: "Support",
-    color: "amber",
-    icon: "headset",
-    description: "Macros, docs and support readiness.",
-  },
-  { name: "Compliance", color: "purple", icon: "shield", description: "Reviews and sign-offs." },
-  { name: "Legal", color: "gray", icon: "scale", description: "Contracts, terms and approvals." },
-  { name: "Design", color: "pink", icon: "pen", description: "UX, visuals and research." },
-  {
-    name: "Finance",
-    color: "olive",
-    icon: "wallet",
-    description: "Budget, pricing and forecasting.",
-  },
-];
+const STEPS = ["Your account", "Components", "Spaces", "Connect tools", "Invite teammates"];
 
 let keySeq = 0;
 const newKey = () => `new-${++keySeq}`;
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-
-/** Custom components get the next color not already in use. */
-function nextColor(used: ComponentColor[]): ComponentColor {
-  return COMPONENT_COLORS.find((c) => !used.includes(c)) ?? "gray";
-}
 
 // ---------------------------------------------------------------------------
 // The flow

@@ -91,3 +91,9 @@ Answers Christina gave before the build started. These sit alongside `v1-scope.m
 
 45. **Removed files:** the stored copy is kept, so Undo always works; removed attachments stop showing everywhere. Deleting stored copies of files removed more than 30 days ago is on the pre-launch list (V1 has no background job runner).
 46. **Component tags on attachments:** not in V1. The `component_id` column stays for later; the section shows no tags.
+
+## Step 11 answers (Nov. 15 2026)
+
+47. **When notification emails go out:** about 20 seconds after the change, and only if it's still true then (so Undo cancels the email, and quick edits don't spam people). Nobody is emailed about their own actions; followers aren't emailed. One combined email per person when a capsule is created.
+48. **Turning emails off:** one switch in Settings → Profile ("Email me when I'm made an owner, assigned work or @mentioned"), on by default; every email links to it.
+49. **Search:** capsules only, by name or key, with recent capsules shown when the box is empty.
