@@ -1,7 +1,8 @@
 # Before launch
 
 Things to do before Capsule opens to Founding Builders teams. Add to this as
-we go; tick items off in the pull request that does them.
+we go; tick items off in the pull request that does them. The settings steps,
+in order, are in docs/launch-day.md.
 
 ## Design and motion
 
@@ -10,14 +11,15 @@ we go; tick items off in the pull request that does them.
   it feels like part of the same motion family as Orbit: the frosted glass, the
   component beads in the org's own colors settling into place, the same easing
   and timing, with the reduced-motion fade kept. (Christina, Nov. 11 2026)
-- [ ] Capsule logo and AI mark (Christina is designing these), then use the logo
-  on sign-in, onboarding, the welcome screen and in emails.
+- [x] Capsule logo in emails (the mark is served from public/email).
+- [ ] AI mark (Christina is designing it).
 
 ## Email
 
 - [ ] Switch invite emails to live: set `EMAIL_MODE=live` in Vercel (Production
   only). Until then, invites only go to `EMAIL_TEST_ALLOWLIST`.
-- [ ] Final copy and styling for the Supabase sign-in email templates.
+- [x] Final copy and styling for the Supabase sign-in email templates
+  (supabase/templates; pasted into Supabase on launch day, docs/launch-day.md).
 
 ## Domain and settings
 
@@ -34,6 +36,9 @@ we go; tick items off in the pull request that does them.
 
 ## Attachments
 
-- [ ] Clean up stored files for attachments removed more than 30 days ago
-  (build-decisions.md 45). Needs a scheduled job; until then removed files stay
-  in the private bucket.
+- [x] Clean up stored files for attachments removed more than 30 days ago
+  (build-decisions.md 45, 54): daily Vercel Cron, needs `CRON_SECRET`.
+
+## Monitoring
+
+- [x] Sentry and PostHog wired in; set their keys in Vercel (docs/launch-day.md).

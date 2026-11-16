@@ -2,6 +2,7 @@
  * Notification emails (step 11): made an owner, assigned a work item,
  * added to a work item (step 12), @mentioned, and added to a new capsule. Same look as the invite email.
  */
+import { emailHeader, originOf } from "./brand";
 
 const esc = (s: string) =>
   s.replace(
@@ -37,7 +38,7 @@ function layout(input: {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAF9F7;padding:40px 16px">
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#FFFFFF;border:1px solid #E6E1DE;border-radius:16px;padding:32px">
-<tr><td style="font-size:18px;font-weight:600;letter-spacing:-0.02em;padding-bottom:24px">Capsule</td></tr>
+${emailHeader(originOf(settingsUrl))}
 <tr><td style="font-size:20px;line-height:26px;font-weight:600;letter-spacing:-0.02em;padding-bottom:12px">${esc(heading)}</td></tr>
 ${lines.map((l) => `<tr><td style="font-size:15px;line-height:22px;color:#5F5854;padding-bottom:8px">${esc(l)}</td></tr>`).join("\n")}
 ${quote ? `<tr><td style="padding:8px 0 8px"><div style="border-left:3px solid #E6E1DE;padding:4px 0 4px 12px;font-size:15px;line-height:22px;color:#2A2523">${esc(quote)}</div></td></tr>` : ""}

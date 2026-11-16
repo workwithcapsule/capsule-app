@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { IdentifyPerson } from "@/components/monitoring";
 import { usePathname } from "next/navigation";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { SearchPalette } from "@/components/shell/search-palette";
@@ -64,6 +65,7 @@ export function AppShell({ children, data }: { children: React.ReactNode; data: 
 
   return (
     <div className="flex min-h-dvh flex-col laptop:flex-row">
+      <IdentifyPerson user={data.user} org={data.org} />
       <a
         href="#main"
         className="sr-only z-[90] rounded-full bg-surface px-4 py-2 shadow-pop focus:not-sr-only focus:fixed focus:top-3 focus:left-3"

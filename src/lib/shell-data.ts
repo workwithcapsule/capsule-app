@@ -3,8 +3,8 @@ import { examplesAllowed } from "@/lib/examples/seed";
 import { createClient } from "@/lib/supabase/server";
 
 export type ShellData = {
-  user: { name: string; initials: string; email: string };
-  org: { name: string; isAdmin: boolean };
+  user: { id: string; name: string; initials: string; email: string };
+  org: { id: string; name: string; isAdmin: boolean };
   spaces: { key: string; name: string }[];
   /** Shows the Example data link (EXAMPLE_DATA_EMAILS). */
   examples: boolean;
@@ -13,8 +13,8 @@ export type ShellData = {
 };
 
 export const EMPTY_SHELL: ShellData = {
-  user: { name: "", initials: "", email: "" },
-  org: { name: "", isAdmin: false },
+  user: { id: "", name: "", initials: "", email: "" },
+  org: { id: "", name: "", isAdmin: false },
   spaces: [],
   examples: false,
   attention: 0,
@@ -42,7 +42,7 @@ export async function loadShellData(): Promise<ShellData> {
       supabase.from("users").select("name, email").eq("id", userId).single(),
       supabase
         .from("org_members")
-        .select("role, orgs(name)")
+        .select("org_id, role, orgs(name)")
         .eq("user_id", userId)
         .limit(1)
         .maybeSingle(),
@@ -58,8 +58,12 @@ export async function loadShellData(): Promise<ShellData> {
   const email = me?.email ?? "";
   const org = membership?.orgs as unknown as { name: string } | null;
   return {
-    user: { name: name || email, initials: initialsOf(name, email), email },
-    org: { name: org?.name ?? "", isAdmin: membership?.role === "admin" },
+    user: { id: userId, name: name || email, initials: initialsOf(name, email), email },
+    org: {
+      id: membership?.org_id ?? "",
+      name: org?.name ?? "",
+      isAdmin: membership?.role === "admin",
+    },
     examples: examplesAllowed(email),
     attention: Array.isArray(attention) ? attention.length : 0,
     spaces: (spaces ?? [])

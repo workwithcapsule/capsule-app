@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Welcome Motion Sketch</title>
+<style>
+  :root {
+    --bg: #faf9f7; --surface: #ffffff; --text: #2a2523; --muted: #5f5854; --border: #e6e1de; --btn: #dcd6d2;
+    --blue-bg: #dbeafe; --blue-fg: #1e40af; --teal-bg: #ccfbf1; --teal-fg: #115e59;
+    --green-bg: #dcfce7; --green-fg: #166534; --amber-bg: #fef3c7; --amber-fg: #92400e;
+    --purple-bg: #ede9fe; --purple-fg: #5b21b6;
+    --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --glass-border: rgba(255, 255, 255, 0.7);
+    --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 12px 32px rgba(42, 37, 35, 0.1);
+    --amb: 0.55;
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1716; --surface: #23201e; --text: #f3efe9; --muted: #b4aca6; --border: #3a3431; --btn: #3f3936;
+    --blue-bg: #1e2a4a; --blue-fg: #93c5fd; --teal-bg: #12312e; --teal-fg: #5eead4;
+    --green-bg: #13301f; --green-fg: #86efac; --amber-bg: #3a2a10; --amber-fg: #fcd34d;
+    --purple-bg: #261c42; --purple-fg: #c4b5fd;
+    --glass-border: rgba(255, 255, 255, 0.14);
+    --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 12px 32px rgba(0, 0, 0, 0.4);
+    --amb: 0.3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100dvh; background: var(--bg); color: var(--text);
+    font-family: Geist, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    display: flex; flex-direction: column; overflow-x: hidden;
+  }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center;
+    padding: 14px 16px; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--muted);
+  }
+  .controls button, .controls label {
+    height: 32px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font: inherit; font-size: 13px;
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  }
+  .stage { position: relative; flex: 1; display: grid; place-items: center; padding: 40px 16px; overflow: hidden; min-height: 560px; }
+  .amb { position: absolute; width: 300px; height: 300px; border-radius: 999px; filter: blur(60px); opacity: 0; pointer-events: none; }
+  .card {
+    position: relative; width: min(520px, 100%); padding: 40px 32px 32px; border-radius: 24px; text-align: center;
+    background: color-mix(in srgb, var(--surface) 55%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5);
+    border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow);
+    display: flex; flex-direction: column; align-items: center; gap: 14px; opacity: 0;
+  }
+  .mark { color: var(--text); opacity: 0; }
+  .beads { display: flex; gap: 10px; height: 52px; align-items: center; justify-content: center; }
+  .bead {
+    width: 52px; height: 52px; border-radius: 26px; position: relative; opacity: 0;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 8px 24px rgba(42, 37, 35, 0.12);
+    display: grid; place-items: center;
+  }
+  .bead span { width: 12px; height: 12px; border-radius: 999px; }
+  h1 { margin: 6px 0 0; font-size: 32px; line-height: 38px; font-weight: 600; letter-spacing: -0.02em; opacity: 0; }
+  p { margin: 0; font-size: 15px; color: var(--muted); opacity: 0; }
+  .go {
+    margin-top: 6px; height: 44px; padding: 0 22px; border-radius: 999px; border: 0; background: var(--btn);
+    color: var(--text); font: inherit; font-size: 15px; font-weight: 500; cursor: pointer; opacity: 0;
+  }
+  .home {
+    position: absolute; inset: 40px 16px; display: grid; place-items: center; opacity: 0; pointer-events: none;
+    font-size: 15px; color: var(--muted);
+  }
+  .notes { max-width: 680px; margin: 0 auto; padding: 0 16px 32px; font-size: 13px; line-height: 20px; color: var(--muted); }
+  .notes ol { padding-left: 18px; }
+</style>
+</head>
+<body>
+  <div class="controls">
+    <button type="button" id="replay">Replay</button>
+    <button type="button" id="theme">Dark mode</button>
+    <label><input type="checkbox" id="reduce"> Reduced motion</label>
+    <button type="button" id="count">Components: 3</button>
+  </div>
+  <div class="stage" id="stage">
+    <div class="card" id="card">
+      <svg class="mark" id="mark" viewBox="12 20 78 60" width="44" height="34" aria-hidden="true">
+        <g fill="currentColor" stroke="currentColor">
+          <path stroke="none" d="M50 25.26 A26 26 0 1 0 50 74.74 A26 26 0 0 1 50 25.26 Z"/>
+          <circle cx="58" cy="50" r="26" fill="none" stroke-width="5"/>
+        </g>
+      </svg>
+      <div class="beads" id="beads"></div>
+      <h1 id="title">Welcome to Capsule, Christina</h1>
+      <p id="sub">Your homepage shows what needs you. Start your first capsule from there.</p>
+      <button class="go" id="go" type="button">Go to your homepage</button>
+    </div>
+    <div class="home" id="home">(Home fades in here)</div>
+  </div>
+  <div class="notes">
+    <strong>What happens, about 2.4 seconds in all:</strong>
+    <ol>
+      <li>A soft glow in your org's component colors fades in behind a frosted glass card (the same glass as Orbit).</li>
+      <li>The Capsule mark appears, then one bead per component you set up in onboarding drifts in from around the screen and settles into a row, one after another, using Orbit's easing.</li>
+      <li>The greeting lifts in, then the line and the button fade in.</li>
+      <li>"Go to your homepage": the beads gather toward the top-left (where the sidebar lives), the card fades, and Home fades in.</li>
+    </ol>
+    With reduced motion on, everything appears with one short fade, and Home fades in on click.
+  </div>
+<script>
+  const PALETTE = ["blue", "teal", "green", "amber", "purple"];
+  let count = 3;
+  const $ = (id) => document.getElementById(id);
+  const ease = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+  const reduced = () => $("reduce").checked;
+
+  function build() {
+    document.querySelectorAll(".amb").forEach((a) => a.remove());
+    const stage = $("stage");
+    PALETTE.slice(0, Math.min(count, 3)).forEach((c, i) => {
+      const a = document.createElement("div");
+      a.className = "amb";
+      a.style.background = `var(--${c}-bg)`;
+      a.style.left = `calc(50% + ${(i - 1) * 180 - 150}px)`;
+      a.style.top = `calc(50% + ${(i % 2 ? 60 : -140)}px)`;
+      stage.prepend(a);
+    });
+    const beads = $("beads");
+    beads.innerHTML = "";
+    PALETTE.slice(0, count).forEach((c) => {
+      const b = document.createElement("div");
+      b.className = "bead";
+      b.style.background = `var(--${c}-bg)`;
+      const dot = document.createElement("span");
+      dot.style.background = `var(--${c}-fg)`;
+      b.append(dot);
+      beads.append(b);
+    });
+    $("home").style.opacity = 0;
+  }
+
+  function play() {
+    document.getAnimations().forEach((a) => a.cancel());
+    build();
+    const all = [".amb", "#card", "#mark", ".bead", "#title", "#sub", "#go"];
+    if (reduced()) {
+      all.forEach((s) => document.querySelectorAll(s).forEach((el) => {
+        el.animate([{ opacity: 0 }, { opacity: s === ".amb" ? "var(--amb)" : 1 }], { duration: 200, fill: "forwards" });
+      }));
+      return;
+    }
+    const amb = getComputedStyle(document.documentElement).getPropertyValue("--amb").trim();
+    document.querySelectorAll(".amb").forEach((el, i) =>
+      el.animate([{ opacity: 0, transform: "scale(0.8)" }, { opacity: amb, transform: "scale(1)" }],
+        { duration: 900, delay: i * 80, easing: ease, fill: "forwards" }));
+    $("card").animate([{ opacity: 0, transform: "scale(0.96)" }, { opacity: 1, transform: "scale(1)" }],
+      { duration: 500, delay: 100, easing: ease, fill: "forwards" });
+    $("mark").animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }],
+      { duration: 400, delay: 300, easing: ease, fill: "forwards" });
+    const beads = [...document.querySelectorAll(".bead")];
+    beads.forEach((el, i) => {
+      const angle = (i / beads.length) * Math.PI * 2 + 0.6;
+      const dx = Math.cos(angle) * 260, dy = Math.sin(angle) * 180;
+      el.animate([
+        { opacity: 0, transform: `translate(${dx}px, ${dy}px) scale(0.6)` },
+        { opacity: 1, offset: 0.4 },
+        { opacity: 1, transform: `translate(${dx * 0.15}px, ${dy * 0.15 - 8}px) scale(1.04)`, offset: 0.8 },
+        { opacity: 1, transform: "none" },
+      ], { duration: 900, delay: 450 + i * 90, easing: ease, fill: "forwards" });
+    });
+    const after = 450 + beads.length * 90 + 600;
+    $("title").animate([{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "none" }],
+      { duration: 500, delay: after, easing: ease, fill: "forwards" });
+    ["sub", "go"].forEach((id, i) =>
+      $(id).animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, delay: after + 200 + i * 100, fill: "forwards" }));
+  }
+
+  function leave() {
+    if (reduced()) {
+      $("card").animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: "forwards" });
+      $("home").animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 150, fill: "forwards" });
+      return;
+    }
+    document.querySelectorAll(".bead").forEach((el, i) =>
+      el.animate([{ transform: "none" }, { transform: "translate(-320px, -240px) scale(0.4)", opacity: 0 }],
+        { duration: 600, delay: i * 50, easing: ease, fill: "forwards" }));
+    document.querySelectorAll(".amb").forEach((el) => el.animate([{}, { opacity: 0 }], { duration: 500, fill: "forwards" }));
+    $("card").animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "scale(0.98)" }],
+      { duration: 400, delay: 250, easing: ease, fill: "forwards" });
+    $("home").animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, delay: 500, fill: "forwards" });
+  }
+
+  $("replay").onclick = play;
+  $("go").onclick = leave;
+  $("reduce").onchange = play;
+  $("theme").onclick = () => {
+    const dark = document.documentElement.dataset.theme === "dark";
+    document.documentElement.dataset.theme = dark ? "light" : "dark";
+    $("theme").textContent = dark ? "Dark mode" : "Light mode";
+    play();
+  };
+  $("count").onclick = () => {
+    count = count >= 5 ? 2 : count + 1;
+    $("count").textContent = `Components: ${count}`;
+    play();
+  };
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) $("reduce").checked = true;
+  play();
+</script>
+</body>
+</html>
