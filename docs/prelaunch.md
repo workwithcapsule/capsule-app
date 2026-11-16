@@ -6,7 +6,7 @@ in order, are in docs/launch-day.md.
 
 ## Design and motion
 
-- [ ] **Welcome animation, aligned with Orbit.** The current welcome (title lifts
+- [x] **Welcome animation, aligned with Orbit.** The current welcome (title lifts
   in, text and button fade) matches the prototype. Before launch, rework it so
   it feels like part of the same motion family as Orbit: the frosted glass, the
   component beads in the org's own colors settling into place, the same easing

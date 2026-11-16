@@ -87,6 +87,22 @@ export function ExamplesPanel({ status }: { status: Status }) {
         </div>
       </section>
 
+      <section aria-labelledby="welcome-h" className="flex flex-col gap-3">
+        <h2 id="welcome-h" className="text-base leading-6 font-semibold">
+          Welcome animation
+        </h2>
+        <p className="text-[13px] text-muted-foreground">
+          The screen people see right after onboarding: one bead per org component, each with its
+          own icon and color. Replay it any time; “Go to your homepage” brings you back to Home.
+        </p>
+        <Link
+          href="/welcome"
+          className="inline-flex h-8 items-center self-start rounded-full border border-border bg-surface px-3.5 text-[13px] text-foreground no-underline hover:bg-subtle"
+        >
+          Replay the welcome
+        </Link>
+      </section>
+
       <section aria-labelledby="shape-h" className="flex flex-col gap-3">
         <h2 id="shape-h" className="text-base leading-6 font-semibold">
           AI shaping
