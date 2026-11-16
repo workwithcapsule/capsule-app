@@ -1,4 +1,5 @@
 /** The invitation email: "Christina invited you to Acme Partners on Capsule". */
+import { emailHeader, originOf } from "./brand";
 
 const esc = (s: string) =>
   s.replace(
@@ -33,7 +34,7 @@ export function inviteEmail(input: {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAF9F7;padding:40px 16px">
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#FFFFFF;border:1px solid #E6E1DE;border-radius:16px;padding:32px">
-<tr><td style="font-size:18px;font-weight:600;letter-spacing:-0.02em;padding-bottom:24px">Capsule</td></tr>
+${emailHeader(originOf(joinUrl))}
 <tr><td style="font-size:22px;line-height:28px;font-weight:600;letter-spacing:-0.02em;padding-bottom:12px">${esc(inviterName)} invited you to ${esc(orgName)}</td></tr>
 <tr><td style="font-size:15px;line-height:22px;color:#5F5854;padding-bottom:24px">Capsule brings tech and business teams into one place, so everyone can follow an outcome from idea to launch.</td></tr>
 <tr><td style="padding-bottom:24px"><a href="${esc(joinUrl)}" style="display:inline-block;background:#DCD6D2;color:#2A2523;text-decoration:none;font-size:14px;font-weight:500;padding:11px 18px;border-radius:999px">Join ${esc(orgName)}</a></td></tr>

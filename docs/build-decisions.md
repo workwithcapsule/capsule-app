@@ -104,3 +104,9 @@ Answers Christina gave before the build started. These sit alongside `v1-scope.m
 51. **Work item detail view:** a 600px drawer from the right over the capsule page, like the prototype's drawer. Clicking a work item's title opens it. It has the title, status, assignee, notes, collaborators and the item's own Activity.
 52. **Overall status with several people:** suggested from their pieces (all done → Done, any in review → In review, any started → In progress). It follows the pieces until someone sets it by hand; then the drawer shows "Suggested from the pieces: X · Use suggestion". The assignee, the lead, the component owner and the capsule owner can set it.
 53. **Collaborators on a work item** (table `work_item_collaborators`): each has their part ("piece", up to 80 characters) and their own status; one can be the lead. They join the component's team like assignees. Each collaborator can change their own part and status, or leave. The assignee, the item's creator, the lead and the owners add and remove people and pick the lead. New collaborators get an email (the same 20-second rule) and a row on Home ("Your part: …"), except when they're also the assignee, where the item's own row covers it.
+
+## Launch prep answers (Nov. 16 2026)
+
+54. **Removed files** are deleted 30 days after removal by a daily Vercel Cron job (`/api/cron/cleanup-files`, protected by `CRON_SECRET`); the attachment row goes too, and Activity keeps its own copy of the name. Vercel Cron is a built-in scheduled request, not the job runner left out of V1.
+55. **Monitoring:** Sentry for errors (browser and server, errors only, no request bodies) and PostHog for page views, session replays (everything typed is hidden) and feature flags. Both stay off until their keys are set in Vercel. Signed-in people are identified by id, name and email, and their org.
+56. **Welcome animation:** a sketch first (docs/sketches/welcome-motion.html) before building it.

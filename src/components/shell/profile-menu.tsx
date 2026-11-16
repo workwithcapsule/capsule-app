@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { forgetPerson } from "@/components/monitoring";
 import { useTheme } from "next-themes";
 import {
   CaretUpDown,
@@ -125,6 +126,7 @@ export function ProfileMenu({
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onSelect={() => {
+            forgetPerson();
             const form = document.createElement("form");
             form.method = "post";
             form.action = "/auth/signout";
