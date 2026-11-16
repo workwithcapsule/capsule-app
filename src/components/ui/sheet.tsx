@@ -5,8 +5,9 @@ import { Dialog as SheetPrimitive } from "radix-ui";
 import { cn } from "@/lib/utils";
 
 /**
- * shadcn/ui sheet (a panel that slides in from the left), used for the
- * sidebar on laptop and narrow widths. Motion matches the prototype:
+ * shadcn/ui sheet (a panel that slides in from the side): the sidebar on
+ * laptop and narrow widths (left), and the work item drawer (right, 600px
+ * like the prototype's drawer). Motion matches the prototype:
  * a short slide and fade, skipped with reduced motion.
  */
 
@@ -21,8 +22,9 @@ function SheetTitle({ className, ...props }: React.ComponentProps<typeof SheetPr
 function SheetContent({
   className,
   children,
+  side = "left",
   ...props
-}: React.ComponentProps<typeof SheetPrimitive.Content>) {
+}: React.ComponentProps<typeof SheetPrimitive.Content> & { side?: "left" | "right" }) {
   return (
     <SheetPrimitive.Portal>
       <SheetPrimitive.Overlay
@@ -38,9 +40,18 @@ function SheetContent({
         data-slot="sheet-content"
         aria-describedby={undefined}
         className={cn(
-          "fixed inset-y-0 left-0 z-[70] flex h-dvh w-[272px] max-w-[86vw] flex-col overflow-y-auto border-r border-border bg-bg shadow-drawer outline-none",
-          "data-[state=open]:animate-in data-[state=open]:duration-[220ms] data-[state=open]:ease-capsule data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-left-7",
-          "data-[state=closed]:animate-out data-[state=closed]:duration-150 data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-left-7",
+          "fixed inset-y-0 z-[70] flex h-dvh flex-col overflow-y-auto shadow-drawer outline-none",
+          side === "left"
+            ? "left-0 w-[272px] max-w-[86vw] border-r border-border bg-bg"
+            : "right-0 w-[600px] max-w-[100vw] border-l border-border bg-surface",
+          "data-[state=open]:animate-in data-[state=open]:ease-capsule data-[state=open]:fade-in-0",
+          side === "left"
+            ? "data-[state=open]:duration-[220ms] data-[state=open]:slide-in-from-left-7"
+            : "data-[state=open]:duration-[350ms] data-[state=open]:slide-in-from-right-10",
+          "data-[state=closed]:animate-out data-[state=closed]:duration-150 data-[state=closed]:fade-out-0",
+          side === "left"
+            ? "data-[state=closed]:slide-out-to-left-7"
+            : "data-[state=closed]:slide-out-to-right-10",
           "motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none",
           className,
         )}

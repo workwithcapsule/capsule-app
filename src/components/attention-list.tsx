@@ -176,6 +176,7 @@ export function AttentionList({
 function title(r: AttentionRow, nameOf: (id: string | null) => string, variant: string) {
   switch (r.kind) {
     case "item":
+    case "piece":
       return r.title;
     case "component":
       return variant === "capsule"
@@ -228,9 +229,13 @@ function Context({ r, variant }: { r: AttentionRow; variant: string }) {
       <span>
         {r.kind === "item"
           ? "Assigned to you"
-          : r.kind === "component"
-            ? "You own it"
-            : "On a capsule you own"}
+          : r.kind === "piece"
+            ? r.body
+              ? `Your part: ${r.body}`
+              : "You’re on it"
+            : r.kind === "component"
+              ? "You own it"
+              : "On a capsule you own"}
       </span>
       {r.dueDate && (
         <>
@@ -247,6 +252,8 @@ function details(r: AttentionRow, nameOf: (id: string | null) => string) {
   switch (r.kind) {
     case "item":
       return `Assigned to you in ${r.componentName} on ${r.capsuleKey} ${r.capsuleName}.${due}`;
+    case "piece":
+      return `${nameOf(r.actorId)} added you to this work item in ${r.componentName} on ${r.capsuleKey} ${r.capsuleName}.${r.body ? ` Your part: ${r.body}.` : ""}${due}`;
     case "component":
       return `You own ${r.componentName} on ${r.capsuleKey} ${r.capsuleName}. Open it to update its status and work items.${due}`;
     case "no_owner":

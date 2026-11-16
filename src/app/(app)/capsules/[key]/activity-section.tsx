@@ -100,7 +100,14 @@ export function ActivitySection({
           )}
         >
           {shown.map((e) => (
-            <Row key={e.id} e={e} view={view} team={team} big={big} onDelete={() => remove(e)} />
+            <ActivityRow
+              key={e.id}
+              e={e}
+              view={view}
+              team={team}
+              big={big}
+              onDelete={() => remove(e)}
+            />
           ))}
           {feed.length > limit && (
             <li className="py-3">
@@ -126,7 +133,7 @@ export function ActivitySection({
   );
 }
 
-function Row({
+export function ActivityRow({
   e,
   view,
   team,

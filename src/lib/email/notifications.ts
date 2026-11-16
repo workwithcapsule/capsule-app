@@ -1,6 +1,6 @@
 /*
  * Notification emails (step 11): made an owner, assigned a work item,
- * @mentioned, and added to a new capsule. Same look as the invite email.
+ * added to a work item (step 12), @mentioned, and added to a new capsule. Same look as the invite email.
  */
 
 const esc = (s: string) =>
@@ -95,6 +95,26 @@ export function assignedEmail(i: Common & { title: string; component: string }):
     ...layout({
       heading: `${i.actor} assigned you “${i.title}”`,
       lines: [`It’s part of ${i.component} on ${i.capsuleKey} ${i.capsuleName}.`],
+      button: { label: "Open the work item", url: i.url },
+      settingsUrl: i.settingsUrl,
+    }),
+  };
+}
+
+export function pieceEmail(
+  i: Common & { title: string; component: string; piece: string; lead: boolean },
+): Email {
+  const subject = `${i.actor} added you to “${i.title}” in ${i.capsuleKey}`;
+  const lines = [
+    i.piece ? `Your part: ${i.piece}.` : "",
+    i.lead ? "You’re the lead on it." : "",
+    `It’s part of ${i.component} on ${i.capsuleKey} ${i.capsuleName}.`,
+  ].filter(Boolean);
+  return {
+    subject,
+    ...layout({
+      heading: `${i.actor} added you to “${i.title}”`,
+      lines,
       button: { label: "Open the work item", url: i.url },
       settingsUrl: i.settingsUrl,
     }),

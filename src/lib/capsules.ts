@@ -4,6 +4,7 @@ import type { ComponentColor, Status } from "@/lib/design";
 import type { LinkType } from "@/lib/attachments";
 import { sortAttention, toAttentionRow } from "@/lib/attention";
 import type { CapsuleData, PersonRef } from "@/lib/capsule-types";
+import type { ItemStatus } from "@/lib/work-items";
 
 const initialsOf = (name: string) => name.trim().charAt(0).toUpperCase() || "?";
 
@@ -63,6 +64,7 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
     followers,
     attention,
     attachments,
+    pieces,
   ] = await Promise.all([
     supabase
       .from("components")
@@ -73,7 +75,9 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
       .order("position"),
     supabase
       .from("work_items")
-      .select("id, component_id, title, done, assignee_id, created_by, position, created_at")
+      .select(
+        "id, component_id, title, done, assignee_id, created_by, position, created_at, status, status_manual, note",
+      )
       .eq("capsule_id", cap.id)
       .order("position")
       .order("created_at"),
@@ -105,6 +109,11 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
       .select("id, kind, name, url, storage_path, link_type, size_bytes, added_by, created_at")
       .eq("capsule_id", cap.id)
       .is("removed_at", null)
+      .order("created_at"),
+    supabase
+      .from("work_item_collaborators")
+      .select("id, work_item_id, user_id, piece, status, is_lead, created_by")
+      .eq("capsule_id", cap.id)
       .order("created_at"),
   ]);
 
@@ -153,6 +162,18 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
       assigneeId: i.assignee_id,
       createdBy: i.created_by,
       position: i.position,
+      status: i.status as ItemStatus,
+      statusManual: i.status_manual,
+      note: i.note,
+    })),
+    pieces: (pieces.data ?? []).map((p) => ({
+      id: p.id,
+      itemId: p.work_item_id,
+      userId: p.user_id,
+      piece: p.piece,
+      status: p.status as ItemStatus,
+      isLead: p.is_lead,
+      createdBy: p.created_by,
     })),
     people,
     componentTypes: (types.data ?? []).map((t) => ({ ...t, color: t.color as ComponentColor })),
