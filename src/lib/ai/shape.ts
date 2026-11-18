@@ -140,6 +140,9 @@ export async function shapeCapsule(description: string): Promise<ShapeResult> {
     const ctx = buildContext(raw);
     const message = contextMessage(ctx, text);
     const signal = AbortSignal.timeout(TIMEOUT_MS);
+    // Each persisted shaping request is this one-turn conversation. Retries share its trace.
+    const sessionId = `shaping-${requestId as string}`;
+    const traceId = crypto.randomUUID();
 
     let lastError = "";
     let tokens = { input: 0, output: 0, model: "" };
@@ -151,6 +154,9 @@ export async function shapeCapsule(description: string): Promise<ShapeResult> {
           ctx,
           description: text,
           signal,
+          sessionId,
+          traceId,
+          userId,
         });
         tokens = {
           input: tokens.input + (answer.inputTokens ?? 0),
@@ -194,5 +200,7 @@ export async function shapeCapsule(description: string): Promise<ShapeResult> {
     console.error("[shaping] unexpected error:", e);
     await finish({ status: "failed", error: "Unexpected error" });
     return { ok: false, kind: "failed", error: FAILED };
+  } finally {
+    await provider.flush();
   }
 }

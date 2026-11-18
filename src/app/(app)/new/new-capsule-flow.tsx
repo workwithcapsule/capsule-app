@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ArrowUp, Warning } from "@phosphor-icons/react";
+import posthog from "posthog-js";
 import { guessComponents } from "@/lib/ai/guess";
 import type { ShapedDraft } from "@/lib/ai/types";
 import type { ComponentType, PersonRef } from "@/lib/capsule-types";
@@ -101,6 +102,12 @@ export function NewCapsuleFlow({
     const id = ++run.current;
     const motion = !reducedMotion();
     const guess = guessComponents(text, types);
+    if (process.env.NEXT_PUBLIC_POSTHOG_KEY && process.env.NEXT_PUBLIC_POSTHOG_HOST) {
+      posthog.capture("capsule_shaping_requested", {
+        prompt_length: text.length,
+        suggested_component_count: guess.length,
+      });
+    }
     const start = (guess.length ? guess : types.slice(0, 3)).slice(0, 4);
     setBeadsFromGuess(start.map((t) => ({ key: t.id, color: t.color, icon: t.icon })));
     setAnswer(null);

@@ -1,3 +1,6 @@
+"use client";
+
+import { forgetPerson } from "@/components/monitoring";
 import { cn } from "@/lib/utils";
 
 /** A simple centered page outside the app (sign-in, invite-only, welcome). */
@@ -18,7 +21,7 @@ export function CenteredPage({
 /** Sign out, as a form so it works without JavaScript. */
 export function SignOutButton({ className }: { className?: string }) {
   return (
-    <form action="/auth/signout" method="post" className={className}>
+    <form action="/auth/signout" method="post" className={className} onSubmit={forgetPerson}>
       <button
         type="submit"
         className="text-[13px] font-medium text-muted-foreground underline underline-offset-[3px] hover:text-foreground"

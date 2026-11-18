@@ -1,9 +1,38 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { Anthropic as PostHogAnthropic } from "@posthog/ai/anthropic";
+import { PostHog } from "posthog-node";
 import type { ShapingContext } from "./context";
 import { guessComponents } from "./guess";
 import { ShapeOutput } from "./schema";
+
+const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
+const posthog =
+  posthogKey && posthogHost
+    ? new PostHog(posthogKey, {
+        host: posthogHost,
+        privacyMode: false,
+        flushAt: 1,
+        flushInterval: 0,
+        requestTimeout: 2000,
+        fetchRetryCount: 0,
+      })
+    : null;
+
+if (!posthog && process.env.NODE_ENV !== "production") {
+  if (!posthogKey) {
+    console.warn(
+      "NEXT_PUBLIC_POSTHOG_KEY variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once NEXT_PUBLIC_POSTHOG_KEY is configured",
+    );
+  }
+  if (!posthogHost) {
+    console.warn(
+      "NEXT_PUBLIC_POSTHOG_HOST variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once NEXT_PUBLIC_POSTHOG_HOST is configured",
+    );
+  }
+}
 
 /*
  * The AI call behind one small interface, so another provider can be added
@@ -26,7 +55,11 @@ export interface ShapingProvider {
     ctx: ShapingContext;
     description: string;
     signal: AbortSignal;
+    sessionId: string;
+    traceId: string;
+    userId: string;
   }): Promise<ProviderAnswer>;
+  flush(): Promise<void>;
 }
 
 /** Thrown for answers that can't be used, with a message safe to log. */
@@ -35,24 +68,44 @@ export class ShapingError extends Error {}
 /** Claude, through the official SDK. The model and effort come from settings. */
 class AnthropicProvider implements ShapingProvider {
   readonly name = "anthropic";
-  private client = new Anthropic({ maxRetries: 1 });
+  private client = posthog ? null : new Anthropic({ maxRetries: 1 });
+  private observedClient = posthog
+    ? new PostHogAnthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY!,
+        maxRetries: 1,
+        posthog,
+      })
+    : null;
   private model = process.env.ANTHROPIC_MODEL || "claude-opus-5-5";
   private effort = (process.env.ANTHROPIC_EFFORT || "medium") as "low" | "medium" | "high";
 
-  async shape({ system, message, signal }: Parameters<ShapingProvider["shape"]>[0]) {
-    const res = await this.client.beta.messages.create(
-      {
-        model: this.model,
-        max_tokens: 8000,
-        // If a safety filter declines, Anthropic retries on a fallback model.
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
-        output_config: { effort: this.effort, format: zodOutputFormat(ShapeOutput) },
-        system,
-        messages: [{ role: "user", content: message }],
-      },
-      { signal },
-    );
+  async shape({
+    system,
+    message,
+    signal,
+    sessionId,
+    traceId,
+    userId,
+  }: Parameters<ShapingProvider["shape"]>[0]) {
+    const request = {
+      model: this.model,
+      max_tokens: 8000,
+      // If a safety filter declines, Anthropic retries on a fallback model.
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default" as const,
+      output_config: { effort: this.effort, format: zodOutputFormat(ShapeOutput) },
+      system,
+      messages: [{ role: "user" as const, content: message }],
+    };
+    const observedRequest = {
+      ...request,
+      posthogDistinctId: userId,
+      posthogTraceId: traceId,
+      posthogProperties: { $ai_session_id: sessionId },
+    };
+    const res = this.observedClient
+      ? await this.observedClient.beta.messages.create(observedRequest, { signal })
+      : await this.client!.beta.messages.create(request, { signal });
     if (res.stop_reason === "refusal") throw new ShapingError("Claude declined this description");
     if (res.stop_reason === "max_tokens") throw new ShapingError("The answer was cut off");
     const text = res.content
@@ -71,6 +124,10 @@ class AnthropicProvider implements ShapingProvider {
       inputTokens: res.usage.input_tokens ?? null,
       outputTokens: res.usage.output_tokens ?? null,
     };
+  }
+
+  async flush() {
+    if (posthog) await posthog.flush().catch(() => {});
   }
 }
 
@@ -123,6 +180,8 @@ class FakeProvider implements ShapingProvider {
     };
     return { output, model: "fake", inputTokens: null, outputTokens: null };
   }
+
+  async flush() {}
 }
 
 /** The provider to use: the fake when AI_PROVIDER=fake, Claude when a key is set, else none. */

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Crown, DotsThree, Plus, SignOut, User, UserMinus, X } from "@phosphor-icons/react";
+import posthog from "posthog-js";
 import { Avatar } from "@/components/avatar";
 import { ComponentIcon } from "@/components/component-icon";
 import { EditableText } from "@/components/editable-text";
@@ -58,7 +59,17 @@ export function useItemActions(item: WorkItem, view: CapsuleData, change: Change
       const status: ItemStatus = next ? "done" : "not_started";
       change(
         { type: "item", id: item.id, patch: withStatus(before, status, hasPieces) },
-        () => updateWorkItem(item.id, { done: next }),
+        async () => {
+          const result = await updateWorkItem(item.id, { done: next });
+          if (
+            result.ok &&
+            process.env.NEXT_PUBLIC_POSTHOG_KEY &&
+            process.env.NEXT_PUBLIC_POSTHOG_HOST
+          ) {
+            posthog.capture("work_item_completion_changed", { completed: next });
+          }
+          return result;
+        },
         {
           message: next ? `Checked off “${item.title}”.` : `“${item.title}” is open again.`,
           undo: undoStatus(),

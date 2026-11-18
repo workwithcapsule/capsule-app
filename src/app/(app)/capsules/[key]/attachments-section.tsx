@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import posthog from "posthog-js";
 import {
   BookOpenText,
   File,
@@ -152,15 +153,24 @@ export function AttachmentsSection({
     };
     change(
       { type: "addAttachment", attachment: temp },
-      () =>
-        addAttachment({
+      async () => {
+        const result = await addAttachment({
           orgId: view.capsule.orgId,
           capsuleId: view.capsule.id,
           kind: "link",
           name: check.name,
           url: check.url,
           linkType: check.linkType,
-        }),
+        });
+        if (
+          result.ok &&
+          process.env.NEXT_PUBLIC_POSTHOG_KEY &&
+          process.env.NEXT_PUBLIC_POSTHOG_HOST
+        ) {
+          posthog.capture("attachment_added", { attachment_type: check.linkType });
+        }
+        return result;
+      },
       {
         message: `Attached “${check.name}”.`,
         undo: (data) => ({
@@ -204,7 +214,7 @@ export function AttachmentsSection({
             .upload(path, f, { contentType: f.type || undefined, upsert: false });
           if (upErr)
             return { ok: false as const, error: `Couldn’t upload “${f.name}”. Try again.` };
-          return addAttachment({
+          const result = await addAttachment({
             orgId: view.capsule.orgId,
             capsuleId: view.capsule.id,
             kind: "file",
@@ -213,6 +223,14 @@ export function AttachmentsSection({
             sizeBytes: f.size,
             mimeType: f.type || null,
           });
+          if (
+            result.ok &&
+            process.env.NEXT_PUBLIC_POSTHOG_KEY &&
+            process.env.NEXT_PUBLIC_POSTHOG_HOST
+          ) {
+            posthog.capture("attachment_added", { attachment_type: fileKind(f.name) });
+          }
+          return result;
         },
         {
           message: `Attached “${f.name}”.`,
