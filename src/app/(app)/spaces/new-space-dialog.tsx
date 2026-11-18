@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import { Plus } from "@phosphor-icons/react";
 import { useToast } from "@/components/toaster";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,12 @@ export function NewSpaceDialog({ takenPrefixes }: { takenPrefixes: string[] }) {
     start(async () => {
       const r = await createSpace({ name, prefix: shownPrefix, description });
       if (!r.ok) return setError(r.error);
+      if (process.env.NEXT_PUBLIC_POSTHOG_KEY && process.env.NEXT_PUBLIC_POSTHOG_HOST) {
+        posthog.capture("space_created", {
+          has_description: Boolean(description.trim()),
+          key_prefix_length: shownPrefix.length,
+        });
+      }
       setOpen(false);
       toast(`Created ${name.trim()}. It’s in Your spaces now.`);
       router.push(`/spaces/${r.keyPrefix!.toLowerCase()}`);

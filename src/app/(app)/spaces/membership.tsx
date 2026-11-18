@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { Check } from "@phosphor-icons/react";
+import posthog from "posthog-js";
 import { useToast } from "@/components/toaster";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,11 @@ export function useMembership(
         onChange(space.id, !join, previousRole);
         toast(r.error);
         return;
+      }
+      if (process.env.NEXT_PUBLIC_POSTHOG_KEY && process.env.NEXT_PUBLIC_POSTHOG_HOST) {
+        posthog.capture("space_membership_changed", {
+          membership_action: join ? "joined" : "left",
+        });
       }
       if (!withUndo) return;
       const undo = () =>

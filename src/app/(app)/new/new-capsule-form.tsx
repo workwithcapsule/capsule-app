@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import { CalendarBlank, Plus, User, X } from "@phosphor-icons/react";
 import { Avatar } from "@/components/avatar";
 import { ComponentIcon } from "@/components/component-icon";
@@ -207,6 +208,18 @@ export function NewCapsuleForm({
       if (!r.ok) {
         setError(r.error);
         return;
+      }
+      if (process.env.NEXT_PUBLIC_POSTHOG_KEY && process.env.NEXT_PUBLIC_POSTHOG_HOST) {
+        posthog.capture("capsule_created", {
+          creation_source: review ? "ai_suggestion" : "manual",
+          component_count: components.length,
+          work_item_count: components.reduce(
+            (count, component) =>
+              count + component.items.length + Number(Boolean(component.itemDraft.trim())),
+            0,
+          ),
+          has_target_date: Boolean(launchDate),
+        });
       }
       setFinished(true);
       if (review) {

@@ -17,7 +17,7 @@ export function IdentifyPerson({
 }) {
   useEffect(() => {
     if (!user.id) return;
-    if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+    if (process.env.NEXT_PUBLIC_POSTHOG_KEY && process.env.NEXT_PUBLIC_POSTHOG_HOST) {
       posthog.identify(user.id, { name: user.name, email: user.email });
       if (org.id) posthog.group("org", org.id, { name: org.name });
     }
@@ -28,6 +28,6 @@ export function IdentifyPerson({
 
 /** On sign-out: forget who this was, so the next person on the device starts fresh. */
 export function forgetPerson() {
-  if (process.env.NEXT_PUBLIC_POSTHOG_KEY) posthog.reset();
+  if (process.env.NEXT_PUBLIC_POSTHOG_KEY && process.env.NEXT_PUBLIC_POSTHOG_HOST) posthog.reset();
   if (process.env.NEXT_PUBLIC_SENTRY_DSN) Sentry.setUser(null);
 }

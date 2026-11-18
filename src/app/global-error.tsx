@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
+import posthog from "posthog-js";
 
 /**
  * The last-resort error page, when even the app's layout fails. Reports the
@@ -11,6 +12,9 @@ import * as Sentry from "@sentry/nextjs";
 export default function GlobalError({ error }: { error: Error & { digest?: string } }) {
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_SENTRY_DSN) Sentry.captureException(error);
+    if (process.env.NEXT_PUBLIC_POSTHOG_KEY && process.env.NEXT_PUBLIC_POSTHOG_HOST) {
+      posthog.captureException(error);
+    }
   }, [error]);
   return (
     <html lang="en">

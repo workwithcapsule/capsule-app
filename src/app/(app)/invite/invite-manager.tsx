@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input } from "@/components/ui/input";
 import { parseInvites } from "@/lib/validation";
@@ -47,8 +48,12 @@ export function InviteManager({
     setError("");
     start(async () => {
       const r = await addInvitations(orgId, check.emails);
-      if (r.ok) setDraft("");
-      else setError(r.error);
+      if (r.ok) {
+        if (process.env.NEXT_PUBLIC_POSTHOG_KEY && process.env.NEXT_PUBLIC_POSTHOG_HOST) {
+          posthog.capture("invitees_added", { invitee_count: check.emails.length });
+        }
+        setDraft("");
+      } else setError(r.error);
     });
   }
 
@@ -59,6 +64,14 @@ export function InviteManager({
       const r = only ? await resendInvitation(orgId, only) : await sendInvitations(orgId);
       if (!r.ok) return setError(r.error);
       const s = r.summary!;
+      if (process.env.NEXT_PUBLIC_POSTHOG_KEY && process.env.NEXT_PUBLIC_POSTHOG_HOST) {
+        posthog.capture("invitations_sent", {
+          send_type: only ? "resend" : "batch",
+          sent_count: s.sent.length,
+          held_count: s.held.length,
+          failed_count: s.failed.length,
+        });
+      }
       const parts = [];
       if (s.sent.length)
         parts.push(
