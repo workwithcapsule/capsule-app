@@ -91,6 +91,46 @@ const itemStatus = (db: Db) =>
     [ITEM.techApi],
   );
 
+const CLAUDE_APP = "00000000-0000-4000-8000-00000000c1a0";
+const NAMELESS_APP = "00000000-0000-4000-8000-00000000c1a1";
+
+/**
+ * Signs in as someone through an AI app, the way Supabase's OAuth server
+ * does: the same token as the app's, plus the app's `client_id`. Registers
+ * the app (and the person's consent) first, as Supabase would.
+ */
+async function viaApp(
+  db: Db,
+  who: "christina" | "dana" | "jon" | "maya" | "bob" | "olga",
+  app = CLAUDE_APP,
+) {
+  await db.query("reset role");
+  await db.query(
+    `insert into auth.oauth_clients (id, registration_type, redirect_uris, grant_types, client_name, client_type, token_endpoint_auth_method)
+     values ($1, 'dynamic', 'https://claude.ai/api/mcp/auth_callback', 'authorization_code,refresh_token', $2, 'public', 'none')
+     on conflict (id) do nothing`,
+    [app, app === CLAUDE_APP ? "Claude" : null],
+  );
+  await db.query(
+    `insert into auth.oauth_consents (id, user_id, client_id, scopes)
+     values (gen_random_uuid(), $1, $2, 'email') on conflict (user_id, client_id) do nothing`,
+    [P[who], app],
+  );
+  await db.query("select set_config('request.jwt.claims', $1, true)", [
+    JSON.stringify({ sub: P[who], role: "authenticated", aud: "authenticated", client_id: app }),
+  ]);
+  await db.query("set local role authenticated");
+}
+
+/** Where the newest activity entry on EN-1 came from: "source:app name". */
+const lastSource = (db: Db) =>
+  value<string>(
+    db,
+    `select kind || ':' || source || ':' || coalesce(agent_client, '-') from public.events
+     where capsule_id = $1 order by created_at desc limit 1`,
+    [CAPSULE.en1],
+  );
+
 const groups: Group[] = [
   {
     title: "Seeing capsules",
@@ -878,11 +918,16 @@ const groups: Group[] = [
         who: "jon",
         tries: "post a comment that claims to come from an AI agent (MCP)",
         expect: "blocked",
-        run: write(
-          `insert into public.events (org_id, capsule_id, actor_user_id, kind, data, source, agent_client)
-           values ($1, $2, $3, 'comment', '{"body":"hi"}', 'mcp', 'Claude')`,
-          [ORG.acme, CAPSULE.en1, P.jon],
-        ),
+        // The comment saves, but as his own from the app: the claim doesn't stick.
+        run: async (db) => {
+          await db.query(
+            `insert into public.events (org_id, capsule_id, actor_user_id, kind, data, source, agent_client)
+             values ($1, $2, $3, 'comment', '{"body":"hi"}', 'mcp', 'Claude')`,
+            [ORG.acme, CAPSULE.en1, P.jon],
+          );
+          const src = await lastSource(db);
+          return check(src !== "comment:app:-", `stored as ${src}`);
+        },
       },
     ],
   },
@@ -2538,6 +2583,156 @@ const groups: Group[] = [
             `${back}; on Tech ${onTeam}`,
           );
         },
+      },
+    ],
+  },
+  {
+    title: "Using Capsule from an AI app (MCP)",
+    cases: [
+      {
+        who: "christina",
+        tries: "comment on EN-1 through Claude, shown as via Claude",
+        expect: "allowed",
+        run: async (db) => {
+          await viaApp(db, "christina");
+          const r = await attempt(
+            db,
+            `insert into public.events (org_id, capsule_id, actor_user_id, kind, data)
+             values ($1, $2, $3, 'comment', '{"body":"Vendor signed"}')`,
+            [ORG.acme, CAPSULE.en1, P.christina],
+          );
+          const src = await lastSource(db);
+          return check(r.allowed && src === "comment:mcp:Claude", `${r.detail}; ${src}`);
+        },
+      },
+      {
+        who: "jon",
+        tries: "add a work item through Claude, logged as via Claude",
+        expect: "allowed",
+        run: async (db) => {
+          await viaApp(db, "jon");
+          const r = await attempt(
+            db,
+            `insert into public.work_items (org_id, capsule_id, component_id, title, assignee_id, created_by)
+             values ($1, $2, $3, 'Load test the API', $4, $4)`,
+            [ORG.acme, CAPSULE.en1, COMP.en1Ops, P.jon],
+          );
+          const src = await lastSource(db);
+          return check(r.allowed && src === "item_added:mcp:Claude", `${r.detail}; ${src}`);
+        },
+      },
+      {
+        who: "jon",
+        tries: "rename Christina's capsule through Claude (he can't in the app either)",
+        expect: "blocked",
+        run: async (db) => {
+          await viaApp(db, "jon");
+          return attempt(db, `update public.capsules set name = 'Mine now' where id = $1`, [
+            CAPSULE.en1,
+          ]);
+        },
+      },
+      {
+        who: "bob",
+        tries: "comment on EN-1 through Claude (followers are read-only)",
+        expect: "blocked",
+        run: async (db) => {
+          await viaApp(db, "bob");
+          return attempt(
+            db,
+            `insert into public.events (org_id, capsule_id, actor_user_id, kind, data)
+             values ($1, $2, $3, 'comment', '{"body":"Hi"}')`,
+            [ORG.acme, CAPSULE.en1, P.bob],
+          );
+        },
+      },
+      {
+        who: "bob",
+        tries: "read EN-1 through Claude, which he follows",
+        expect: "allowed",
+        run: async (db) => {
+          await viaApp(db, "bob");
+          return attempt(db, `select 1 from public.capsules where id = $1`, [CAPSULE.en1]);
+        },
+      },
+      {
+        who: "olga",
+        tries: "see any Acme capsule through Claude",
+        expect: "blocked",
+        run: async (db) => {
+          await viaApp(db, "olga");
+          return attempt(db, `select 1 from public.capsules where org_id = $1`, [ORG.acme]);
+        },
+      },
+      {
+        who: "christina",
+        tries: "post a comment in the app that claims to come from Claude",
+        expect: "blocked",
+        run: async (db) => {
+          await db.query(
+            `insert into public.events (org_id, capsule_id, actor_user_id, kind, data, source, agent_client)
+             values ($1, $2, $3, 'comment', '{"body":"Sneaky"}', 'mcp', 'Claude')`,
+            [ORG.acme, CAPSULE.en1, P.christina],
+          );
+          const src = await lastSource(db);
+          return check(src !== "comment:app:-", `stored as ${src}`);
+        },
+      },
+      {
+        who: "christina",
+        tries: "act through an app that gave no name, shown as An AI app",
+        expect: "allowed",
+        run: async (db) => {
+          await viaApp(db, "christina", NAMELESS_APP);
+          await db.query(
+            `insert into public.events (org_id, capsule_id, actor_user_id, kind, data)
+             values ($1, $2, $3, 'comment', '{"body":"Hello"}')`,
+            [ORG.acme, CAPSULE.en1, P.christina],
+          );
+          const src = await lastSource(db);
+          return check(src === "comment:mcp:An AI app", String(src));
+        },
+      },
+      {
+        who: "server",
+        tries: "write an example entry marked via Claude (Example data)",
+        expect: "allowed",
+        run: async (db) => {
+          await db.query(
+            `insert into public.events (org_id, capsule_id, actor_user_id, kind, data, source, agent_client)
+             values ($1, $2, $3, 'comment', '{"body":"Example"}', 'mcp', 'Claude')`,
+            [ORG.acme, CAPSULE.en1, P.christina],
+          );
+          const src = await lastSource(db);
+          return check(src === "comment:mcp:Claude", String(src));
+        },
+      },
+      {
+        who: "christina",
+        tries: "see Claude in her connected apps",
+        expect: "allowed",
+        run: async (db) => {
+          await viaApp(db, "christina");
+          await signIn(db, "christina");
+          const name = await value<string>(db, `select name from public.my_connected_apps()`);
+          return check(name === "Claude", String(name));
+        },
+      },
+      {
+        who: "dana",
+        tries: "see the apps Christina connected",
+        expect: "blocked",
+        run: async (db) => {
+          await viaApp(db, "christina");
+          await signIn(db, "dana");
+          return attempt(db, `select 1 from public.my_connected_apps()`);
+        },
+      },
+      {
+        who: "signed out",
+        tries: "list connected apps",
+        expect: "blocked",
+        run: read(`select 1 from public.my_connected_apps()`),
       },
     ],
   },
