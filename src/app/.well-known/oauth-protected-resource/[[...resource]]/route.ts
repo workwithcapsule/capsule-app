@@ -11,9 +11,10 @@ export function GET(req: Request) {
   const forwarded = req.headers.get("x-forwarded-host");
   const proto = req.headers.get("x-forwarded-proto") ?? "https";
   const base = forwarded ? `${proto}://${forwarded}` : origin;
-  return protectedResourceHandler({ authServerUrls: [authServerUrl()], resourceUrl: `${base}/mcp` })(
-    req,
-  );
+  return protectedResourceHandler({
+    authServerUrls: [authServerUrl()],
+    resourceUrl: `${base}/mcp`,
+  })(req);
 }
 
 export const OPTIONS = metadataCorsOptionsRequestHandler();

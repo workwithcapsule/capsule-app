@@ -3,7 +3,7 @@
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowUp } from "@phosphor-icons/react";
-import { Avatar } from "@/components/avatar";
+import { ActorAvatar, Avatar, ViaApp } from "@/components/avatar";
 import { ComponentIcon } from "@/components/component-icon";
 import {
   buildFeed,
@@ -164,15 +164,16 @@ export function ActivityRow({
         pending && "opacity-60",
       )}
     >
-      <Avatar
+      <ActorAvatar
         name={actor?.name ?? name}
         initials={actor?.initials ?? "?"}
         size={big ? 28 : 24}
         me={isMe}
+        via={e.via}
       />
       <div className={cn("flex min-w-0 flex-1 flex-col", big ? "gap-1" : "gap-0.5")}>
         <p className={cn("m-0 break-words", big ? "text-sm" : "text-[13px] leading-[18px]")}>
-          <b className="font-semibold">{name}</b>{" "}
+          <b className="font-semibold">{name}</b> <ViaApp via={e.via} />
           {e.kind === "comment"
             ? splitMentions(text, team).map((part, i) =>
                 part.mention ? (

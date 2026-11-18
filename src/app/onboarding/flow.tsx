@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, X } from "@phosphor-icons/react";
+import { ActorAvatar, ViaApp } from "@/components/avatar";
 import { ColorIconPicker } from "@/components/color-icon-picker";
 import { AddLine, Card, Heading, Nav, Row, ServerError, SetupFrame } from "@/components/setup";
 import { Button } from "@/components/ui/button";
@@ -411,24 +412,25 @@ export function OnboardingFlow({ initial }: { initial: OnboardingState }) {
         </Card>
         <h2 className="mt-3 text-base leading-6 font-semibold">AI tools</h2>
         <p className="text-muted-foreground">
-          You don’t set up agents inside Capsule. Connect the AI app you already use, and it can
-          read your capsules, update work and hand things back for review.
+          You don’t set up agents inside Capsule. Connect the AI app you already use, and it can see
+          what needs you, update work items and comment for you.
         </p>
         <Card className="flex flex-col gap-2.5 px-5 py-4">
           <span className="text-xs font-semibold tracking-[0.04em] text-muted-foreground">
-            EVERY AGENT ACTION IS LABELED
+            EVERY AI ACTION IS LABELED
           </span>
           <span className="flex items-center gap-3">
-            <span aria-hidden="true" className="relative size-8 flex-none">
-              <span className="absolute top-0 left-0 flex size-6 items-center justify-center rounded-full bg-avatar-me text-[11px] font-semibold">
-                {firstName[0]?.toUpperCase()}
-              </span>
-              <span className="absolute right-0 bottom-0 size-5 rounded-full bg-foreground shadow-[0_0_0_2px_var(--surface)]" />
-            </span>
+            <ActorAvatar
+              name={firstName}
+              initials={firstName[0]?.toUpperCase() ?? "?"}
+              size={28}
+              me
+              via="Claude"
+            />
             <span className="flex flex-col">
               <span>
-                <b className="font-semibold">Claude</b>, on behalf of {firstName}, drafted the
-                enablement guide
+                <b className="font-semibold">{firstName}</b> <ViaApp via="Claude" />
+                added “Draft the enablement guide”
               </span>
               <span className="text-xs text-muted-foreground">
                 Partner leaderboard launch · Sales · just now
@@ -436,25 +438,28 @@ export function OnboardingFlow({ initial }: { initial: OnboardingState }) {
             </span>
           </span>
           <span className="text-[13px] leading-[18px] text-muted-foreground">
-            Agents act with your permissions, never as you. Approvals, releases and scope changes
-            still come to a person.
+            The app gets your permissions and nothing more. It can’t remove anything, change
+            settings or invite people.
           </span>
         </Card>
         <Card>
           {[
-            ["Claude", "Add Capsule as a connector, then sign in once to approve it."],
-            ["ChatGPT", "Add Capsule as an app, then sign in once to approve it."],
+            ["Claude", "Settings → Connectors → Add custom connector, then paste the address."],
+            ["ChatGPT", "Add Capsule as a connector or app, then paste the address."],
           ].map(([name, blurb]) => (
             <Row key={name}>
               <span className="flex flex-col">
                 <span className="font-medium">{name}</span>
                 <span className="text-[13px] leading-[18px] text-muted-foreground">{blurb}</span>
               </span>
-              {soon}
+              <CopyConnector />
             </Row>
           ))}
         </Card>
-        <span className="text-xs text-muted-foreground">Works with any app that supports MCP.</span>
+        <span className="text-xs text-muted-foreground">
+          Works with any app that supports MCP. You sign in to Capsule once to approve it, and can
+          disconnect it any time in Settings.
+        </span>
         <ServerError message={serverError} />
         <Nav
           onBack={() => go(3)}
@@ -560,5 +565,26 @@ export function OnboardingFlow({ initial }: { initial: OnboardingState }) {
     >
       {body}
     </SetupFrame>
+  );
+}
+
+/** Copies Capsule's MCP connector address (this site's /mcp). */
+function CopyConnector() {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Button
+      size="sm"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(`${window.location.origin}/mcp`);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1600);
+        } catch {
+          // Clipboard blocked: the address is also in Settings → Connected apps.
+        }
+      }}
+    >
+      {copied ? "Copied" : "Copy address"}
+    </Button>
   );
 }

@@ -70,7 +70,7 @@ Added after the V1 build was finished. These are now in scope, in this order.
 - An MCP server at app.workwithcapsule.com/mcp, so Claude, ChatGPT and other MCP apps can use Capsule as the person who connects them.
 - Sign-in through Supabase's OAuth 2.1 server, with a Capsule consent page (Allow or Deny). The AI app gets exactly that person's permissions, and nothing more.
 - What it can see: Needs your attention, your work items, capsule search, a capsule (components, work items, team, today's activity) and your spaces.
-- What it can do: create a capsule, add a work item, change a work item's status or due date, assign it (same rules as the app), and comment with @mentions. No removing or deleting, no org settings, no invites.
+- What it can do: create a capsule, add a work item, change a work item's status, title or notes, assign it (same rules as the app; work items have no due date of their own), and comment with @mentions. No removing or deleting, no org settings, no invites.
 - Every change is shown as done "via" the app on behalf of the person ("Christina via Claude"), in Activity and in emails. Emails go out as for a person's own change.
 - Everyone in the org can connect an AI app. Settings → Connected apps lists them, with Disconnect.
 - The onboarding Connect tools step's AI tools section becomes real; Jira and monday stay "coming soon".

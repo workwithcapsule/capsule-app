@@ -93,12 +93,7 @@ async function capsuleInfo(admin: Admin, capsuleId: string) {
   };
 }
 
-async function send(
-  admin: Admin,
-  by: Actor,
-  recipientId: string,
-  build: (actor: string) => Email,
-) {
+async function send(admin: Admin, by: Actor, recipientId: string, build: (actor: string) => Email) {
   const actorId = by.id;
   if (recipientId === actorId) return;
   const map = await people(admin, [actorId, recipientId]);

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Page } from "@/components/page";
 import type { ComponentColor } from "@/lib/design";
+import { siteOrigin } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 import { SettingsView } from "./settings-view";
 
@@ -12,7 +13,7 @@ async function Content({ searchParams }: { searchParams: PageProps<"/settings">[
   const { data: claims } = await supabase.auth.getClaims();
   const userId = claims?.claims?.sub as string | undefined;
   if (!userId) return null;
-  const [{ data: me }, { data: membership }, params] = await Promise.all([
+  const [{ data: me }, { data: membership }, params, { data: apps }, origin] = await Promise.all([
     supabase.from("users").select("name, email, email_notifications").eq("id", userId).single(),
     supabase
       .from("org_members")
@@ -21,6 +22,8 @@ async function Content({ searchParams }: { searchParams: PageProps<"/settings">[
       .limit(1)
       .maybeSingle(),
     searchParams,
+    supabase.rpc("my_connected_apps"),
+    siteOrigin(),
   ]);
   const isAdmin = membership?.role === "admin";
   const { data: types } = isAdmin
@@ -40,13 +43,29 @@ async function Content({ searchParams }: { searchParams: PageProps<"/settings">[
           ? "components"
           : tab === "appearance"
             ? "appearance"
-            : "profile"
+            : tab === "apps"
+              ? "apps"
+              : "profile"
       }
       name={me?.name ?? ""}
       email={me?.email ?? ""}
       emailNotifications={me?.email_notifications !== false}
       orgId={membership?.org_id ?? null}
       isAdmin={isAdmin}
+      mcpUrl={`${origin}/mcp`}
+      apps={(
+        (apps ?? []) as {
+          client_id: string;
+          name: string;
+          connected_at: string;
+          last_used_at: string | null;
+        }[]
+      ).map((a) => ({
+        clientId: a.client_id,
+        name: a.name,
+        connectedAt: a.connected_at,
+        lastUsedAt: a.last_used_at,
+      }))}
       components={(types ?? []).map((t) => ({
         id: t.id,
         key: t.id,
@@ -59,7 +78,7 @@ async function Content({ searchParams }: { searchParams: PageProps<"/settings">[
   );
 }
 
-/** Settings (step 11): Profile, Appearance, and Org components for org admins. */
+/** Settings (step 11): Profile, Appearance, Connected apps (step 13), and Org components for org admins. */
 export default function SettingsPage({ searchParams }: PageProps<"/settings">) {
   return (
     <Page title="Settings">

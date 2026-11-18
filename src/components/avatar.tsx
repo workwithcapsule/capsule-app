@@ -1,3 +1,4 @@
+import { Sparkle } from "@phosphor-icons/react/dist/ssr";
 import { cn } from "@/lib/utils";
 
 /** A person's initial in a circle (prototype .av). */
@@ -59,4 +60,37 @@ export function AvatarStack({
       ))}
     </span>
   );
+}
+
+/**
+ * A person's avatar with the AI app that acted for them layered in front
+ * (design-decisions.md: agents sit in front of the person they act for).
+ * Without `via`, it's the plain avatar.
+ */
+export function ActorAvatar({
+  via,
+  ...props
+}: React.ComponentProps<typeof Avatar> & { via?: string | null }) {
+  if (!via) return <Avatar {...props} />;
+  const size = props.size ?? 22;
+  const badge = size >= 28 ? 16 : 14;
+  return (
+    <span className="relative inline-flex flex-none" style={{ width: size, height: size }}>
+      <Avatar {...props} />
+      <span
+        title={`via ${via}`}
+        aria-label={`via ${via}`}
+        className="absolute -right-1 -bottom-1 inline-flex items-center justify-center rounded-full bg-c-purple text-c-purple-fg shadow-[0_0_0_2px_var(--surface)]"
+        style={{ width: badge, height: badge }}
+      >
+        <Sparkle size={badge - 6} weight="fill" aria-hidden="true" />
+      </span>
+    </span>
+  );
+}
+
+/** "via Claude", after the person's name. */
+export function ViaApp({ via }: { via?: string | null }) {
+  if (!via) return null;
+  return <span className="font-normal text-muted-foreground">via {via} </span>;
 }

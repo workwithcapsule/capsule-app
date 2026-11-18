@@ -30,9 +30,14 @@ import { ITEM_STATUSES, type ItemStatus } from "@/lib/work-items";
 type Result = { content: { type: "text"; text: string }[]; isError?: boolean };
 
 const ok = (value: unknown): Result => ({
-  content: [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }],
+  content: [
+    { type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) },
+  ],
 });
-const fail = (message: string): Result => ({ content: [{ type: "text", text: message }], isError: true });
+const fail = (message: string): Result => ({
+  content: [{ type: "text", text: message }],
+  isError: true,
+});
 
 const statusLabel = (s: string) => STATUS_META[s as ItemStatus]?.label ?? s;
 const ATTENTION_LABEL: Record<AttentionRow["kind"], string> = {
@@ -225,7 +230,9 @@ export function registerTools(server: McpServer) {
           (c.component_types as unknown as { name: string } | null)?.name ?? null,
         ]),
       );
-      const rows = items.filter((i) => capById.get(i.capsule_id) && !capById.get(i.capsule_id)!.archived);
+      const rows = items.filter(
+        (i) => capById.get(i.capsule_id) && !capById.get(i.capsule_id)!.archived,
+      );
       if (!rows.length) return ok("No work items are assigned to you.");
       return ok(
         rows.map((r) => ({
@@ -246,7 +253,9 @@ export function registerTools(server: McpServer) {
       title: "Search capsules",
       description:
         'Find capsules by name or key ("EN-4", "EN"). With an empty query, lists the person\'s most recently updated capsules.',
-      inputSchema: z.object({ query: z.string().max(100).describe("Words from the name, or a key.") }),
+      inputSchema: z.object({
+        query: z.string().max(100).describe("Words from the name, or a key."),
+      }),
       annotations: { readOnlyHint: true },
     },
     async ({ query }) => {
@@ -328,7 +337,9 @@ export function registerTools(server: McpServer) {
         components: z
           .array(
             z.object({
-              component: z.string().describe('A component from the organization\'s list, like "Tech".'),
+              component: z
+                .string()
+                .describe('A component from the organization\'s list, like "Tech".'),
               owner: z.string().optional(),
               due_date: z
                 .string()
@@ -460,10 +471,7 @@ export function registerTools(server: McpServer) {
         capsule: keyField,
         work_item_id: z.string().uuid(),
         status: z.enum(ITEM_STATUSES as [ItemStatus, ...ItemStatus[]]).optional(),
-        assignee: z
-          .string()
-          .optional()
-          .describe('A name, "me", or "nobody" to unassign.'),
+        assignee: z.string().optional().describe('A name, "me", or "nobody" to unassign.'),
         title: z.string().min(1).max(200).optional(),
         note: z.string().max(5000).optional().describe("Replaces the item's notes."),
       }),
@@ -520,7 +528,11 @@ export function registerTools(server: McpServer) {
       ];
       const r = await postComment({ capsuleId: data.capsule.id, body, mentions });
       if (!r.ok) return fail(r.error);
-      return ok({ posted: true, capsule: data.capsule.key, url: await capsuleUrl(data.capsule.key) });
+      return ok({
+        posted: true,
+        capsule: data.capsule.key,
+        url: await capsuleUrl(data.capsule.key),
+      });
     },
   );
 }

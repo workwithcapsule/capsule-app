@@ -28,4 +28,3 @@ const handler = withMcpAuth(
 );
 
 export { handler as GET, handler as POST, handler as DELETE };
-
