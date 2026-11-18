@@ -40,8 +40,12 @@ export async function updateSession(request: NextRequest) {
     status = error ? "not_approved" : (s as AccessStatus);
   }
 
-  const target = redirectFor(status, pathname);
+  let target = redirectFor(status, pathname);
   if (!target) return response;
+  // Keep the whole address when sending someone to sign in, so they come back
+  // to it (an AI app's approval page needs its ?authorization_id).
+  if (status === "signed_out" && request.nextUrl.search && target.startsWith("/login?next="))
+    target = `/login?next=${encodeURIComponent(pathname + request.nextUrl.search)}`;
 
   const redirect = NextResponse.redirect(new URL(target, request.url));
   // Carry over any refreshed session cookies.

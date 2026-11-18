@@ -13,6 +13,7 @@ import {
 import { sendEmail } from "@/lib/email/send";
 import { siteOrigin } from "@/lib/site";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { currentApp } from "@/lib/supabase/bearer";
 
 /*
  * Notification emails (step 11, build-decisions.md 47–48).
@@ -42,10 +43,12 @@ export async function notifyLater(actorId: string | undefined, job: NotifyJob) {
   if (!actorId) return;
   const origin = await siteOrigin();
   const at = Date.now();
+  // Changes an AI app made for someone say so: "Christina via Claude".
+  const actor = { id: actorId, via: currentApp() };
   after(async () => {
     await new Promise((r) => setTimeout(r, delayMs()));
     try {
-      await deliver(actorId, job, origin, at);
+      await deliver(actor, job, origin, at);
     } catch (e) {
       console.error("[notify] couldn't send", job.kind, e);
     }
@@ -53,6 +56,7 @@ export async function notifyLater(actorId: string | undefined, job: NotifyJob) {
 }
 
 type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
+type Actor = { id: string; via: string | null };
 type Person = { id: string; name: string; email: string; on: boolean };
 
 async function people(admin: Admin, ids: string[]): Promise<Map<string, Person>> {
@@ -91,15 +95,17 @@ async function capsuleInfo(admin: Admin, capsuleId: string) {
 
 async function send(
   admin: Admin,
-  actorId: string,
+  by: Actor,
   recipientId: string,
   build: (actor: string) => Email,
 ) {
+  const actorId = by.id;
   if (recipientId === actorId) return;
   const map = await people(admin, [actorId, recipientId]);
   const to = map.get(recipientId);
   if (!to || !to.on) return;
-  const actor = map.get(actorId)?.name ?? "Someone";
+  const name = map.get(actorId)?.name ?? "Someone";
+  const actor = by.via ? `${name} via ${by.via}` : name;
   const r = await sendEmail({ to: to.email, ...build(actor) });
   if (r.status === "failed") console.error("[notify] email failed:", r.error);
 }
@@ -131,7 +137,7 @@ async function backToBefore(
   return first?.from === personId;
 }
 
-async function deliver(actorId: string, job: NotifyJob, origin: string, at: number) {
+async function deliver(by: Actor, job: NotifyJob, origin: string, at: number) {
   const admin = createAdminClient();
   if (!admin) return;
   const settingsUrl = `${origin}/settings`;
@@ -159,7 +165,7 @@ async function deliver(actorId: string, job: NotifyJob, origin: string, at: numb
       if (!cap) return;
       const component =
         (k.component_types as unknown as { name: string } | null)?.name ?? "A component";
-      await send(admin, actorId, job.ownerId, (actor) =>
+      await send(admin, by, job.ownerId, (actor) =>
         ownerOfComponentEmail({
           actor,
           component,
@@ -185,7 +191,7 @@ async function deliver(actorId: string, job: NotifyJob, origin: string, at: numb
         )
       )
         return;
-      await send(admin, actorId, job.ownerId, (actor) =>
+      await send(admin, by, job.ownerId, (actor) =>
         ownerOfCapsuleEmail({
           actor,
           capsuleKey: cap.key,
@@ -218,7 +224,7 @@ async function deliver(actorId: string, job: NotifyJob, origin: string, at: numb
       const component =
         (w.components as unknown as { component_types: { name: string } | null } | null)
           ?.component_types?.name ?? "a component";
-      await send(admin, actorId, job.assigneeId, (actor) =>
+      await send(admin, by, job.assigneeId, (actor) =>
         assignedEmail({
           actor,
           title: w.title,
@@ -250,7 +256,7 @@ async function deliver(actorId: string, job: NotifyJob, origin: string, at: numb
       if (!p || !w || p.user_id !== job.userId || p.status === "done" || w.done) return;
       const cap = await capsuleInfo(admin, w.capsule_id);
       if (!cap) return;
-      await send(admin, actorId, job.userId, (actor) =>
+      await send(admin, by, job.userId, (actor) =>
         pieceEmail({
           actor,
           title: w.title,
@@ -291,7 +297,7 @@ async function deliver(actorId: string, job: NotifyJob, origin: string, at: numb
         .eq("event_id", e.id);
       const body = String((e.data as { body?: string } | null)?.body ?? "");
       for (const m of mentions ?? []) {
-        await send(admin, actorId, m.user_id, (actor) =>
+        await send(admin, by, m.user_id, (actor) =>
           mentionEmail({
             actor,
             body,
@@ -332,7 +338,7 @@ async function deliver(actorId: string, job: NotifyJob, origin: string, at: numb
       for (const w of items ?? [])
         if (w.assignee_id && !w.done) get(w.assignee_id).items.push(w.title);
       for (const [id, what] of who) {
-        await send(admin, actorId, id, (actor) =>
+        await send(admin, by, id, (actor) =>
           addedToCapsuleEmail({
             actor,
             ...what,

@@ -94,7 +94,7 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
       .order("position"),
     supabase
       .from("events")
-      .select("id, kind, actor_user_id, data, created_at")
+      .select("id, kind, actor_user_id, agent_client, data, created_at")
       .eq("capsule_id", cap.id)
       .order("created_at", { ascending: false })
       .limit(500),
@@ -197,6 +197,7 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
       id: e.id,
       kind: e.kind,
       actorId: e.actor_user_id,
+      via: e.agent_client ?? null,
       data: (e.data ?? {}) as Record<string, unknown>,
       at: e.created_at,
     })),

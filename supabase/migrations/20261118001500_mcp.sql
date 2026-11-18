@@ -133,3 +133,41 @@ $$;
 
 revoke execute on function public.my_connected_apps() from public, anon;
 grant execute on function public.my_connected_apps() to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Checking an AI app's token (the MCP route)
+-- ---------------------------------------------------------------------------
+
+-- Called by the MCP route with the app's token. The database has already
+-- checked the token's signature and expiry; this also checks that it was
+-- issued to an AI app, that its session hasn't ended (Disconnect ends it)
+-- and that the person still has the app connected. Returns one row, or none.
+create function public.current_app_session()
+returns table (user_id uuid, client_id uuid, app text)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select
+    (select auth.uid()),
+    c.id,
+    left(coalesce(nullif(trim(c.client_name), ''), 'An AI app'), 80)
+  from auth.oauth_clients c
+  where c.id = nullif(auth.jwt() ->> 'client_id', '')::uuid
+    and c.deleted_at is null
+    and exists (
+      select 1 from auth.sessions s
+      where s.id = nullif(auth.jwt() ->> 'session_id', '')::uuid
+        and s.user_id = (select auth.uid())
+        and s.oauth_client_id = c.id
+        and (s.not_after is null or s.not_after > now())
+    )
+    and exists (
+      select 1 from auth.oauth_consents g
+      where g.user_id = (select auth.uid()) and g.client_id = c.id and g.revoked_at is null
+    );
+$$;
+
+revoke execute on function public.current_app_session() from public, anon;
+grant execute on function public.current_app_session() to authenticated;

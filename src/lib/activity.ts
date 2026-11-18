@@ -17,6 +17,8 @@ export type ActivityEvent = {
   id: string;
   kind: string;
   actorId: string | null;
+  /** The AI app that made the change for them ("Claude"), or null in the app (step 13). */
+  via?: string | null;
   data: Record<string, unknown>;
   at: string; // ISO timestamp
 };
@@ -76,7 +78,8 @@ export function buildFeed(events: ActivityEvent[]): FeedEntry[] {
     const tgt = target(e);
 
     if (e.kind.endsWith("_changed")) {
-      const key = `${e.actorId}|${e.kind}|${tgt}|${str(e.data.field)}`;
+      // Edits through an AI app and in the app itself stay separate entries.
+      const key = `${e.actorId}|${e.via ?? ""}|${e.kind}|${tgt}|${str(e.data.field)}`;
       const chain = chains.get(key);
       if (chain && !chain.dropped && t - chain.lastAt <= MERGE_WINDOW_MS) {
         chain.to = e.data.to;
@@ -125,10 +128,11 @@ export function buildFeed(events: ActivityEvent[]): FeedEntry[] {
     .filter((x) => !(x.kind.endsWith("_changed") && same(x.from, x.to)))
     .filter((x) => !(x.kind === "comment" && commentDeleted.get(x.id)))
     .sort((a, b) => b.at.localeCompare(a.at))
-    .map(({ id, kind, actorId, data, at, from, to }) => ({
+    .map(({ id, kind, actorId, via, data, at, from, to }) => ({
       id,
       kind,
       actorId,
+      ...(via && { via }),
       data,
       at,
       from,
