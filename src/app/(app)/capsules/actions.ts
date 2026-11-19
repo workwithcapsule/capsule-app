@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { notifyLater } from "@/lib/notify";
+import { fetchIssue, peopleByEmail, searchIssues } from "@/lib/jira/client";
+import { jiraKeyFrom, statusFromJira } from "@/lib/jira/issue";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { Status } from "@/lib/design";
 import type { ItemStatus } from "@/lib/work-items";
@@ -518,4 +521,92 @@ export async function fileLink(storagePath: string): Promise<Result<{ url: strin
     .createSignedUrl(storagePath, 300);
   if (error || !data) return { ok: false, error: "Couldn’t open that file. Try again." };
   return { ok: true, data: { url: data.signedUrl } };
+}
+
+// Jira linking (step 14) -----------------------------------------------------------
+
+export type JiraHit = {
+  key: string;
+  title: string;
+  statusName: string;
+  assigneeName: string | null;
+};
+
+export type JiraSearch =
+  | { state: "not_configured" | "not_connected" | "reconnect" | "error" }
+  | { state: "ok"; site: string; issues: JiraHit[] };
+
+/** Searches Jira with the person's own account (by key or words; recent issues when empty). */
+export async function searchJira(query: string): Promise<JiraSearch> {
+  const { userId } = await db();
+  if (!userId) return { state: "error" };
+  const r = await searchIssues(userId, query);
+  if (r.state !== "ok") return r;
+  return {
+    state: "ok",
+    site: r.site,
+    issues: r.issues.map((i) => ({
+      key: i.key,
+      title: i.title,
+      statusName: i.statusName,
+      assigneeName: i.assigneeName,
+    })),
+  };
+}
+
+/**
+ * Links a Jira issue (by key) to a component: looks it up with the person's
+ * own Jira account, matches its assignee to someone in Capsule by email, and
+ * adds it as a linked work item. Undo removes it again (deleteWorkItem).
+ */
+export async function linkJiraIssue(input: {
+  componentId: string;
+  key: string;
+}): Promise<Result<{ id: string; key: string; title: string }>> {
+  const key = jiraKeyFrom(input.key);
+  if (!key) return { ok: false, error: "That isn’t a Jira issue key or link." };
+  const { supabase, userId } = await db();
+  if (!userId) return { ok: false, error: NOT_ALLOWED };
+  const issue = await fetchIssue(userId, key);
+  if (issue === "reconnect")
+    return { ok: false, error: "Connect your Jira account again to link issues." };
+  if (!issue)
+    return {
+      ok: false,
+      error: `Couldn’t open ${key} in Jira. Check the key and that you can open it in Jira.`,
+    };
+  const { data: comp } = await supabase
+    .from("components")
+    .select("org_id")
+    .eq("id", input.componentId)
+    .maybeSingle();
+  const admin = createAdminClient();
+  const assigneeId =
+    comp && admin && issue.assigneeEmail
+      ? ((await peopleByEmail(admin, comp.org_id, [issue.assigneeEmail])).get(
+          issue.assigneeEmail,
+        ) ?? null)
+      : null;
+  const { data, error } = await supabase.rpc("link_work_item", {
+    p_component: input.componentId,
+    p_issue: {
+      key: issue.key,
+      id: issue.id,
+      title: issue.title,
+      url: issue.url,
+      status: statusFromJira(issue.statusCategory, issue.statusName),
+      status_name: issue.statusName,
+      status_category: issue.statusCategory,
+      assignee_id: assigneeId,
+      assignee_name: issue.assigneeName,
+    },
+  });
+  if (error)
+    return {
+      ok: false,
+      error:
+        error.code === "23505" ? `${issue.key} is already linked to this capsule.` : explain(error),
+    };
+  refresh();
+  return { ok: true, data: { id: data as string, key: issue.key, title: issue.title } };
 }

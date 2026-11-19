@@ -21,6 +21,31 @@ export type WorkItem = {
   /** Set by hand on an item with pieces, so it no longer follows them. */
   statusManual: boolean;
   note: string | null;
+  /** Set when it's a linked Jira issue (step 14): done, status and assignee follow Jira. */
+  link?: LinkedIssue | null;
+};
+
+/** A Jira issue a work item is linked to (step 14). */
+export type LinkedIssue = {
+  tool: "jira";
+  key: string;
+  url: string;
+  /** Jira's own status name ("Code review"). */
+  statusName: string | null;
+  /** The Jira assignee's name, for when they aren't in Capsule. */
+  assigneeName: string | null;
+  syncedAt: string | null;
+};
+
+/** Where the viewer stands with Jira linking (step 14). */
+export type JiraState = {
+  /** Set up on this server (Atlassian app keys in place). */
+  configured: boolean;
+  /** The viewer has connected their Jira account. */
+  connected: boolean;
+  /** Jira stopped accepting their connection; they need to connect again. */
+  reconnect: boolean;
+  siteName: string | null;
 };
 
 /** One collaborator's piece of a work item (step 12). */
@@ -98,6 +123,8 @@ export type CapsuleData = {
   followers: { userId: string; since: string }[];
   /** The capsule's activity log, newest first (raw; see lib/activity.ts). */
   activity: ActivityEvent[];
+  /** The viewer's Jira connection, for linking (step 14). */
+  jira: JiraState;
 };
 
 /** Mirrors the database's rules, so the page only shows what each person can change. */
