@@ -88,14 +88,11 @@ export function JiraLinkPicker({
     if (next) search(query, 0);
   }
 
-  // Opened straight away (back from connecting Jira): load recent issues once.
-  const started = useRef(false);
+  // Opened straight away (back from connecting Jira): load recent issues.
   useEffect(() => {
-    if (!defaultOpen || started.current) return;
-    started.current = true;
+    if (!defaultOpen) return;
     const t = setTimeout(() => search("", 0), 0);
     return () => clearTimeout(t);
-     
   }, [defaultOpen]);
 
   const issues = result?.state === "ok" ? result.issues : [];

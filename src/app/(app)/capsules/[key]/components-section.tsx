@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   CalendarBlank,
@@ -418,8 +418,12 @@ function ComponentPanel({
   // Back from connecting Jira: say so, and reopen the picker on this component.
   const backFromJira = params.get("linkjira") === "1" && params.get("component") === k.id;
   const jiraResult = backFromJira ? params.get("jira") : null;
+  const addRow = useRef<HTMLDivElement>(null);
+  const toldJira = useRef(false);
   useEffect(() => {
-    if (!jiraResult) return;
+    if (!jiraResult || toldJira.current) return;
+    toldJira.current = true;
+    scrollToMe(addRow.current);
     toast(
       jiraResult === "connected"
         ? "Jira connected. Search for an issue to link."
@@ -427,7 +431,12 @@ function ComponentPanel({
           ? "Jira wasn’t connected."
           : "Couldn’t connect Jira. Try again.",
     );
-    // Only once, when the page comes back from Jira.
+    // Only once: take the "back from Jira" note out of the address, so the
+    // picker doesn't open again by itself later.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("jira");
+    url.searchParams.delete("linkjira");
+    window.history.replaceState(null, "", url);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jiraResult]);
   // A pasted Jira key or link links the issue instead of adding plain text.
@@ -630,7 +639,10 @@ function ComponentPanel({
           </p>
         )}
         {perms.onTeam && (
-          <div className="mt-3 flex h-10 items-center gap-1.5 rounded-xl border border-dashed border-border pr-1.5 pl-2.5 text-muted-foreground focus-within:border-solid focus-within:border-control">
+          <div
+            ref={addRow}
+            className="mt-3 flex h-10 items-center gap-1.5 rounded-xl border border-dashed border-border pr-1.5 pl-2.5 text-muted-foreground focus-within:border-solid focus-within:border-control"
+          >
             <Plus size={14} aria-hidden="true" />
             <label htmlFor={`add-${k.id}`} className="sr-only">
               Add a work item to {k.name}
