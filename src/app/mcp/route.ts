@@ -11,8 +11,30 @@ import { actingAs, type Acting } from "@/lib/supabase/bearer";
  * on /oauth/consent.
  */
 
+/** Where AI apps fetch Capsule's logo and website from. */
+const SITE = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://app.workwithcapsule.com").replace(
+  /\/$/,
+  "",
+);
+
+// Name, logo and website AI apps show for the connector (MCP `serverInfo`).
+// The logo is the app icon: the white mark on the dark tile, readable in
+// light and dark mode.
+const serverInfo = {
+  name: "Capsule",
+  title: "Capsule",
+  version: "1.0.0",
+  description: "Follow one outcome from idea to launch across every team's part of it.",
+  websiteUrl: "https://workwithcapsule.com",
+  icons: [
+    { src: `${SITE}/apple-icon.png`, mimeType: "image/png", sizes: ["180x180"] },
+    { src: `${SITE}/icon.svg`, mimeType: "image/svg+xml", sizes: ["any"] },
+  ],
+};
+
 const mcp = createMcpHandler(registerTools, {
-  serverInfo: { name: "Capsule", version: "1.0.0" },
+  // mcp-handler's type only lists name and version; it passes the rest on.
+  serverInfo: serverInfo as { name: string; version: string },
   instructions:
     "Capsule follows one outcome (a capsule, with a key like EN-4) from idea to launch across every team's part of it (its components, like Tech or Marketing). Each component has an owner, a status, a due date and work items. You act as the person who connected you, with exactly their permissions; your changes show in Capsule as made by them via you. Start with get_needs_attention for what needs them, or search_capsules and get_capsule.",
 });
