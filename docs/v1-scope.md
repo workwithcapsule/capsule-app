@@ -75,7 +75,13 @@ Added after the V1 build was finished. These are now in scope, in this order.
 - Everyone in the org can connect an AI app. Settings → Connected apps lists them, with Disconnect.
 - The onboarding Connect tools step's AI tools section becomes real; Jira and monday stay "coming soon".
 
-**Step 14: Jira linking** (one-way linking first; two-way sync later)
+**Step 14: Jira linking** (one-way: Capsule reads from Jira and never changes it)
+- Each person connects their own Jira account (Atlassian OAuth) the first time they link an issue, so they only see issues they can see in Jira. Settings → Connected apps shows the connection, with Disconnect; the onboarding Connect tools step's Jira row becomes a real Connect button. monday stays "coming soon".
+- Link from a component's "Add a work item" line: a picker searches Jira by key or title, or paste a Jira key or link. Items already linked in the capsule show as "Linked".
+- A linked item brings its title, assignee (matched to Capsule people by email) and status (To do → Not started, In progress, names with "review" → In review, Done). It keeps a Jira tag with the issue key, linking to the issue. Its checkbox, status and assignee follow Jira and are locked in Capsule; the title can be renamed in Capsule (the rename stays in Capsule), and notes and collaborators work as usual.
+- Linking adds an Activity entry and an Undo toast; linking an open issue to a Done component moves the component back to In progress. Removing a linked item unlinks it (nothing changes in Jira).
+- Linked items refresh from Jira when someone opens the capsule (if not checked in the last 5 minutes) and every night, using the Jira account of the person who linked them.
+- Not in step 14: shaping a capsule from a pasted Jira link (next, its own step), creating Jira issues from Capsule, and Jira webhooks.
 
 ## Later (not V1)
 - Agents inside Capsule, Delegate and the agent review drawer
