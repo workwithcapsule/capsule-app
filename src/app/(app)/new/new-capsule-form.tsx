@@ -465,7 +465,7 @@ export function NewCapsuleForm({
                             caret
                             label={`Owner of ${t.name}`}
                             onPick={(ownerId) => update(c.typeId, { ownerId })}
-                            className="w-full justify-between"
+                            className="w-full"
                           />
                         </span>
                       )}

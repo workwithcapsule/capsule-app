@@ -41,7 +41,7 @@ export function StatusPicker<S extends Status = Status>({
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger className={cn(trigger, "px-1")} aria-label={`${label}: change`}>
         <StatusPill status={value} />
-        <CaretDown size={10} className="text-muted-foreground" />
+        <CaretDown size={10} className="flex-none text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-[180px]">
         <DropdownMenuLabel>{label}</DropdownMenuLabel>
@@ -98,7 +98,7 @@ export function PersonPicker({
             <span className="text-faint">{emptyLabel ?? "Choose"}</span>
           </>
         )}
-        {caret && <CaretDown size={10} className="flex-none text-muted-foreground" />}
+        {caret && <CaretDown size={10} className="ml-auto flex-none text-muted-foreground" />}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-h-80 w-[240px] overflow-y-auto">
         <DropdownMenuLabel>{label}</DropdownMenuLabel>
