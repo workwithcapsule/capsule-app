@@ -7,8 +7,9 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Everything except Next.js internals, static files and scheduled jobs
-    // (/api/cron checks its own secret; it has no signed-in person).
-    "/((?!_next/static|_next/image|api/cron/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // Everything except Next.js internals, static files, scheduled jobs
+    // (/api/cron checks its own secret; it has no signed-in person) and the
+    // MCP server with its sign-in metadata (AI apps send their own token).
+    "/((?!_next/static|_next/image|api/cron/|mcp(?:/|$)|\\.well-known/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

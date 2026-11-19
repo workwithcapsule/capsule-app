@@ -2,18 +2,19 @@
 
 import { useState, useTransition } from "react";
 import { useTheme } from "next-themes";
-import { Check, Monitor, Moon, Sun, X } from "@phosphor-icons/react";
+import { Check, Copy, Monitor, Moon, Sparkle, Sun, X } from "@phosphor-icons/react";
 import { ColorIconPicker } from "@/components/color-icon-picker";
 import { AddLine, Card, Row } from "@/components/setup";
 import { useToast } from "@/components/toaster";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input, Label } from "@/components/ui/input";
 import { nextColor, SUGGESTED_COMPONENTS } from "@/lib/component-catalog";
+import { fmtRelative } from "@/lib/dates";
 import { cn } from "@/lib/utils";
-import { saveName, saveOrgComponents, setEmailNotifications } from "./actions";
-import type { SettingsComponent } from "./types";
+import { disconnectApp, saveName, saveOrgComponents, setEmailNotifications } from "./actions";
+import type { ConnectedApp, SettingsComponent } from "./types";
 
-type Tab = "profile" | "appearance" | "components";
+type Tab = "profile" | "appearance" | "apps" | "components";
 
 let keySeq = 0;
 const newKey = () => `new-${++keySeq}`;
@@ -30,17 +31,24 @@ export function SettingsView(props: {
   orgId: string | null;
   isAdmin: boolean;
   components: SettingsComponent[];
+  mcpUrl: string;
+  apps: ConnectedApp[];
 }) {
   const [tab, setTab] = useState<Tab>(props.initialTab);
   const tabs: [Tab, string][] = [
     ["profile", "Profile"],
     ["appearance", "Appearance"],
+    ["apps", "Connected apps"],
     ...(props.isAdmin ? ([["components", "Org components"]] as [Tab, string][]) : []),
   ];
 
   return (
     <div className="flex max-w-[720px] flex-col gap-6">
-      <div role="tablist" aria-label="Settings" className="flex gap-1 border-b border-divider">
+      <div
+        role="tablist"
+        aria-label="Settings"
+        className="flex gap-1 border-b border-divider max-sm:overflow-x-auto max-sm:overflow-y-hidden"
+      >
         {tabs.map(([id, label]) => (
           <button
             key={id}
@@ -58,7 +66,7 @@ export function SettingsView(props: {
               );
             }}
             className={cn(
-              "-mb-px h-10 border-b-2 border-transparent px-3 text-sm font-medium text-muted-foreground hover:text-foreground",
+              "-mb-px h-10 flex-none border-b-2 border-transparent px-3 text-sm font-medium whitespace-nowrap text-muted-foreground hover:text-foreground",
               tab === id && "border-foreground text-foreground",
             )}
           >
@@ -69,6 +77,7 @@ export function SettingsView(props: {
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
         {tab === "profile" && <Profile {...props} />}
         {tab === "appearance" && <Appearance />}
+        {tab === "apps" && <ConnectedApps mcpUrl={props.mcpUrl} initial={props.apps} />}
         {tab === "components" && props.orgId && (
           <OrgComponents orgId={props.orgId} initial={props.components} />
         )}
@@ -379,5 +388,115 @@ function OrgComponents({ orgId, initial }: { orgId: string; initial: SettingsCom
         )}
       </div>
     </section>
+  );
+}
+
+/** "Just now" → "just now", mid-sentence. */
+const lower = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
+
+/**
+ * AI apps (Claude, ChatGPT, ...) the person has connected (step 13), with
+ * the address to connect one and a way to disconnect each.
+ */
+function ConnectedApps({ mcpUrl, initial }: { mcpUrl: string; initial: ConnectedApp[] }) {
+  const toast = useToast();
+  const [apps, setApps] = useState(initial);
+  const [copied, setCopied] = useState(false);
+  const [pending, start] = useTransition();
+
+  return (
+    <div className="flex flex-col gap-6">
+      <section aria-labelledby="mcp-h" className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <h2 id="mcp-h" className="text-base leading-6 font-semibold">
+            Use Capsule from your AI apps
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Add Capsule as a connector in Claude, ChatGPT or any app that supports MCP, then ask
+            things like “What needs me in Capsule today?” The app works as you, with your
+            permissions, and its changes show as yours via the app.
+          </p>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="mcp-url">Connector address</Label>
+          <div className="flex gap-2">
+            <Input
+              id="mcp-url"
+              readOnly
+              value={mcpUrl}
+              className="h-10 flex-1 font-mono text-[13px]"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+            <Button
+              size="md"
+              className="h-10"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(mcpUrl);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1600);
+                } catch {
+                  toast("Couldn’t copy. Select the address and copy it.");
+                }
+              }}
+            >
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              {copied ? "Copied" : "Copy"}
+            </Button>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            In Claude: Settings → Connectors → Add custom connector, then paste this address and
+            sign in to Capsule when asked.
+          </span>
+        </div>
+      </section>
+
+      <section aria-labelledby="apps-h" className="flex flex-col gap-3">
+        <h2 id="apps-h" className="text-base leading-6 font-semibold">
+          Connected apps
+        </h2>
+        {apps.length ? (
+          <Card>
+            {apps.map((a) => (
+              <Row key={a.clientId}>
+                <span className="flex min-w-0 items-center gap-3">
+                  <span
+                    aria-hidden="true"
+                    className="inline-flex size-8 flex-none items-center justify-center rounded-full bg-c-purple text-c-purple-fg"
+                  >
+                    <Sparkle size={16} weight="fill" />
+                  </span>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm font-medium">{a.name}</span>
+                    <span className="text-xs text-muted-foreground" suppressHydrationWarning>
+                      Connected {lower(fmtRelative(a.connectedAt))}
+                      {a.lastUsedAt && ` · last used ${lower(fmtRelative(a.lastUsedAt))}`}
+                    </span>
+                  </span>
+                </span>
+                <Button
+                  disabled={pending}
+                  onClick={() =>
+                    start(async () => {
+                      const r = await disconnectApp(a.clientId);
+                      if (!r.ok) return toast(r.error);
+                      setApps((list) => list.filter((x) => x.clientId !== a.clientId));
+                      toast(`Disconnected ${a.name}. Connect it again from ${a.name} any time.`);
+                    })
+                  }
+                >
+                  Disconnect
+                </Button>
+              </Row>
+            ))}
+          </Card>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No AI apps are connected yet. Once you connect one, it shows here, and you can
+            disconnect it at any time.
+          </p>
+        )}
+      </section>
+    </div>
   );
 }

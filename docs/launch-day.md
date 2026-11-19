@@ -54,3 +54,19 @@ when you say go. Each one says how to check it worked.
    Example data page and the `EXAMPLE_DATA_EMAILS` setting (a small pull
    request for you to merge). *Check:* the sidebar no longer shows Example
    data and the Examples space is gone.
+
+## Turning on AI apps (step 13, once its pull request is merged)
+
+Nobody can connect an AI app until this is on, so it's safe to merge first.
+
+1. **Supabase OAuth server.** You: Supabase → Authentication → **OAuth Server**.
+   Turn it on, set the **Authorization path** to `/oauth/consent`, and turn on
+   **Allow dynamic client registration** (that's how Claude and ChatGPT add
+   themselves). The Site URL from "On the day" step 2 must already be
+   `https://app.workwithcapsule.com`.
+2. **Try it.** You: in Claude, Settings → Connectors → **Add custom
+   connector**, name it Capsule, address `https://app.workwithcapsule.com/mcp`.
+   Claude opens Capsule's "Allow Claude to use Capsule as you?" page; click
+   Allow. *Check:* ask Claude "What needs me in Capsule?", then see Claude in
+   Capsule → Settings → Connected apps. Anything Claude changes shows in
+   Activity as "Christina via Claude".

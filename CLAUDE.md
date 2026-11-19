@@ -25,7 +25,7 @@ If two docs disagree, `v1-scope.md` wins, then `build-decisions.md`, then `desig
 - **Email:** Resend, sending from hello@workwithcapsule.com as "Christina from Capsule"
 - **Monitoring:** Sentry for errors and PostHog for analytics, session replays and feature flags
 
-**Not in V1:** a background job runner (Inngest or Trigger.dev), the MCP server, Jira and monday sync, Google and Microsoft SSO, WorkOS. Don't add them, but don't design anything that blocks them later.
+**Not in V1:** a background job runner (Inngest or Trigger.dev), Jira two-way sync and monday, Google and Microsoft SSO, WorkOS. Don't add them, but don't design anything that blocks them later.
 
 ## Data rules
 
@@ -55,6 +55,11 @@ Do one step at a time, and tell me when a step is ready to check.
 10. Attachments
 11. Email notifications, search, Settings
 12. Multiple collaborators on a work item, with a work item detail view and work item statuses (before launch)
+
+After launch (see "After launch" in `v1-scope.md`):
+
+13. MCP server: use Capsule from Claude, ChatGPT and other MCP apps, signed in through Supabase OAuth, with attribution ("via Claude") and Settings → Connected apps
+14. Jira linking (one-way first)
 
 ## Orbit
 

@@ -111,3 +111,14 @@ Answers Christina gave before the build started. These sit alongside `v1-scope.m
 55. **Monitoring:** Sentry for errors (browser and server, errors only, no request bodies) and PostHog for page views, session replays (everything typed is hidden) and feature flags. Both stay off until their keys are set in Vercel. Signed-in people are identified by id, name and email, and their org.
 56. **Welcome animation:** a sketch first (docs/sketches/welcome-motion.html) before building it.
 57. **Welcome animation, built:** as the sketch, with each bead showing its component's own icon and color (the org's components, in order, up to 8), like Orbit's beads. "Replay the welcome" is on the Example data page.
+
+## Step 13 answers (Nov. 18 2026)
+
+58. **What AI apps can do:** see (Needs your attention, your work items, capsule search, a capsule, your spaces) plus create a capsule, add a work item, change its status, title or notes, assign it and comment (work items have no due date of their own; components do). No removing, deleting, org settings or invites.
+59. **Who can connect:** everyone in the org. Org-wide limits come later.
+60. **Emails for AI-made changes:** sent as for a person's own change, saying "via Claude".
+61. **How it's built:** the MCP server is a route in this app (`/mcp`, official TypeScript MCP SDK with Vercel's `mcp-handler`). Sign-in is Supabase's OAuth 2.1 server with dynamic client registration and a consent page at `/oauth/consent`. The AI app's token is a normal Supabase token for that person, so row-level security and `private.can()` apply unchanged. The database records the source (`mcp`) and the app's name on every event from the token itself, so it can't be faked.
+62. **Costs:** none extra. The AI runs on the person's own Claude or ChatGPT plan; Capsule doesn't call the Claude API for MCP. Supabase's OAuth server is free during its beta; MCP requests use the same Vercel functions as the app.
+
+63. **Checking an AI app's token:** Supabase doesn't let OAuth app tokens call its "who am I" endpoint, so the database checks them instead (`public.current_app_session`): signature and expiry, that the token was issued to an app, that its session hasn't ended and that the person still has the app connected. Disconnect in Settings revokes the approval, so the app's next request is refused.
+64. **The app's badge:** a small purple sparkle in front of the person's avatar, with "via Claude" after their name. Real app logos can come later; the name always shows.

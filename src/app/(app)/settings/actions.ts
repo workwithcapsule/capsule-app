@@ -118,3 +118,16 @@ export async function saveOrgComponents(
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+/**
+ * Disconnects an AI app (step 13): Supabase Auth revokes the person's
+ * approval and the app's tokens stop working on the next request.
+ */
+export async function disconnectApp(clientId: string): Promise<Result> {
+  const { supabase, userId } = await me();
+  if (!userId) return { ok: false, error: SOMETHING_WRONG };
+  const { error } = await supabase.auth.oauth.revokeGrant({ clientId });
+  if (error) return { ok: false, error: "Couldn’t disconnect it. Try again." };
+  revalidatePath("/settings");
+  return { ok: true };
+}

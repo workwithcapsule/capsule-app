@@ -67,7 +67,7 @@ export async function loadHome(): Promise<HomeData | null> {
         .is("archived_at", null),
       supabase
         .from("events")
-        .select("id, capsule_id, kind, actor_user_id, data, created_at")
+        .select("id, capsule_id, kind, actor_user_id, agent_client, data, created_at")
         .in("capsule_id", ids)
         .gte("created_at", since)
         .order("created_at", { ascending: false })
@@ -84,6 +84,7 @@ export async function loadHome(): Promise<HomeData | null> {
       capsuleId: e.capsule_id,
       kind: e.kind,
       actorId: e.actor_user_id,
+      via: e.agent_client ?? null,
       data: (e.data ?? {}) as Record<string, unknown>,
       at: e.created_at,
     }));

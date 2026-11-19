@@ -282,6 +282,8 @@ export async function seedExamples(admin: Admin, me: Me) {
     data: Record<string, unknown>,
     hoursAgo: number,
     mentions: string[] = [],
+    /** Made through an AI app ("Claude"), as the MCP server records it (step 13). */
+    via?: string,
   ) => {
     const row = await must(
       admin
@@ -293,6 +295,7 @@ export async function seedExamples(admin: Admin, me: Me) {
           kind,
           data,
           created_at: ago(hoursAgo),
+          ...(via && { source: "mcp", agent_client: via }),
         })
         .select("id")
         .single(),
@@ -539,6 +542,32 @@ export async function seedExamples(admin: Admin, me: Me) {
     [me.id],
   );
   await event(ex1, mate.jon, "comment", { body: "Runbook draft goes up tomorrow." }, 0.7);
+  // Through an AI app (step 13): shown as "via Claude", with the app's badge.
+  await event(
+    ex1,
+    mate.dana,
+    "comment",
+    {
+      body: "Summary of this week’s partner feedback: most want the ranking explained on the page, and two asked for a CSV export.",
+    },
+    0.5,
+    [],
+    "Claude",
+  );
+  await event(
+    ex1,
+    me.id,
+    "item_added",
+    {
+      item_id: null,
+      title: "Add a “How ranking works” note",
+      component_id: ex1a,
+      component: A.name,
+    },
+    0.4,
+    [],
+    "Claude",
+  );
 
   // Attachments (step 10): links of different kinds, and a small PDF.
   const attach = async (

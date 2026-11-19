@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Avatar } from "@/components/avatar";
+import { ActorAvatar, ViaApp } from "@/components/avatar";
 import { buildFeed, describe, forFollowers, kindLabel, splitMentions } from "@/lib/activity";
 import type { HomeCapsule, HomeData } from "@/lib/home";
 import { fmtRelative } from "@/lib/dates";
@@ -62,15 +62,17 @@ export function ActivityToday({ data }: { data: HomeData }) {
                 key={e.id}
                 className="flex items-start gap-3 border-b border-divider py-3.5 last:border-b-0"
               >
-                <Avatar
+                <ActorAvatar
                   name={actor?.name ?? "Someone"}
                   initials={actor?.initials ?? "?"}
                   size={28}
                   me={isMe}
+                  via={e.via}
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <p className="m-0 text-sm break-words">
                     <b className="font-semibold">{isMe ? "You" : (actor?.name ?? "Someone")}</b>{" "}
+                    <ViaApp via={e.via} />
                     {e.kind === "comment"
                       ? splitMentions(text, data.people).map((part, i) =>
                           part.mention ? (

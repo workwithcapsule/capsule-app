@@ -56,6 +56,17 @@ group("buildFeed", () => {
     expect(describe(entry, ctx)).toBe("moved the launch date from Dec 1 to Dec 15");
   });
 
+  it("keeps an AI app's edits apart from the person's own, and remembers the app", () => {
+    const feed = buildFeed([
+      ev(0, "capsule_changed", { field: "status", from: "not_started", to: "in_progress" }),
+      {
+        ...ev(1, "capsule_changed", { field: "status", from: "in_progress", to: "in_review" }),
+        via: "Claude",
+      },
+    ]);
+    expect(feed.map((e) => e.via ?? null)).toEqual(["Claude", null]);
+  });
+
   it("keeps edits apart when they're more than a few minutes apart, or by different people", () => {
     expect(
       text([
