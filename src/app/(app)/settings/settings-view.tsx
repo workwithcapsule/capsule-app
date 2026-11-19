@@ -11,8 +11,14 @@ import { FieldError, Input, Label } from "@/components/ui/input";
 import { nextColor, SUGGESTED_COMPONENTS } from "@/lib/component-catalog";
 import { fmtRelative } from "@/lib/dates";
 import { cn } from "@/lib/utils";
-import { disconnectApp, saveName, saveOrgComponents, setEmailNotifications } from "./actions";
-import type { ConnectedApp, SettingsComponent } from "./types";
+import {
+  disconnectApp,
+  disconnectJira,
+  saveName,
+  saveOrgComponents,
+  setEmailNotifications,
+} from "./actions";
+import type { ConnectedApp, JiraConnection, SettingsComponent } from "./types";
 
 type Tab = "profile" | "appearance" | "apps" | "components";
 
@@ -33,6 +39,7 @@ export function SettingsView(props: {
   components: SettingsComponent[];
   mcpUrl: string;
   apps: ConnectedApp[];
+  jira: JiraConnection;
 }) {
   const [tab, setTab] = useState<Tab>(props.initialTab);
   const tabs: [Tab, string][] = [
@@ -77,7 +84,9 @@ export function SettingsView(props: {
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
         {tab === "profile" && <Profile {...props} />}
         {tab === "appearance" && <Appearance />}
-        {tab === "apps" && <ConnectedApps mcpUrl={props.mcpUrl} initial={props.apps} />}
+        {tab === "apps" && (
+          <ConnectedApps mcpUrl={props.mcpUrl} initial={props.apps} jira={props.jira} />
+        )}
         {tab === "components" && props.orgId && (
           <OrgComponents orgId={props.orgId} initial={props.components} />
         )}
@@ -398,9 +407,18 @@ const lower = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
  * AI apps (Claude, ChatGPT, ...) the person has connected (step 13), with
  * the address to connect one and a way to disconnect each.
  */
-function ConnectedApps({ mcpUrl, initial }: { mcpUrl: string; initial: ConnectedApp[] }) {
+function ConnectedApps({
+  mcpUrl,
+  initial,
+  jira,
+}: {
+  mcpUrl: string;
+  initial: ConnectedApp[];
+  jira: JiraConnection;
+}) {
   const toast = useToast();
   const [apps, setApps] = useState(initial);
+  const [jiraOn, setJiraOn] = useState(jira.connected);
   const [copied, setCopied] = useState(false);
   const [pending, start] = useTransition();
 
@@ -497,6 +515,59 @@ function ConnectedApps({ mcpUrl, initial }: { mcpUrl: string; initial: Connected
           </p>
         )}
       </section>
+
+      {jira.configured && (
+        <section aria-labelledby="work-h" className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <h2 id="work-h" className="text-base leading-6 font-semibold">
+              Work tools
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Link Jira issues to work items. Capsule only reads from Jira, with your own account,
+              and never changes anything there.
+            </p>
+          </div>
+          <Card>
+            <Row>
+              <span className="flex min-w-0 flex-col">
+                <span className="text-sm font-medium">Jira</span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {jiraOn
+                    ? jira.reconnect
+                      ? "Jira stopped accepting the connection. Connect again."
+                      : `Connected${jira.accountName ? ` as ${jira.accountName}` : ""}${
+                          jira.siteName ? ` · ${jira.siteName}` : ""
+                        }`
+                    : "Not connected"}
+                </span>
+              </span>
+              {jiraOn && !jira.reconnect ? (
+                <Button
+                  disabled={pending}
+                  onClick={() =>
+                    start(async () => {
+                      const r = await disconnectJira();
+                      if (!r.ok) return toast(r.error);
+                      setJiraOn(false);
+                      toast("Disconnected Jira. Linked items keep their last details.");
+                    })
+                  }
+                >
+                  Disconnect
+                </Button>
+              ) : (
+                <Button asChild variant="primary">
+                  <a
+                    href={`/api/integrations/jira/connect?next=${encodeURIComponent("/settings?tab=apps")}`}
+                  >
+                    Connect Jira
+                  </a>
+                </Button>
+              )}
+            </Row>
+          </Card>
+        </section>
+      )}
     </div>
   );
 }

@@ -20,6 +20,8 @@ import { buildFeed } from "@/lib/activity";
 import type { CapsuleData, Permissions, Piece, WorkItem } from "@/lib/capsule-types";
 import { COMPONENT_COLOR_CLASSES, STATUS_META } from "@/lib/design";
 import { cn } from "@/lib/utils";
+import { fmtRelative } from "@/lib/dates";
+import { JiraTag } from "./jira-link";
 import {
   ITEM_STATUSES,
   piecesDone,
@@ -237,6 +239,7 @@ function DrawerBody({
             )}
             <span aria-hidden="true">·</span>
             <span className="font-mono">{view.capsule.key}</span>
+            {item.link && <JiraTag link={item.link} />}
           </div>
           <SheetTitle asChild>
             <h2 className="m-0 text-xl leading-7 font-semibold tracking-[-0.01em]">
@@ -283,7 +286,7 @@ function DrawerBody({
             ) : (
               <StatusPill status={item.status} />
             )}
-            {suggested && item.statusManual && suggested !== item.status && (
+            {!item.link && suggested && item.statusManual && suggested !== item.status && (
               <span className="text-xs text-muted-foreground">
                 Suggested from the pieces: {STATUS_META[suggested].label}
                 {canComplete && (
@@ -300,8 +303,17 @@ function DrawerBody({
                 )}
               </span>
             )}
-            {suggested && !item.statusManual && (
-              <span className="text-xs text-muted-foreground">Follows the pieces below</span>
+            {item.link ? (
+              <span className="text-xs text-muted-foreground" suppressHydrationWarning>
+                Follows Jira{item.link.statusName ? ` (${item.link.statusName})` : ""}
+                {item.link.syncedAt &&
+                  ` · checked ${fmtRelative(item.link.syncedAt).toLowerCase()}`}
+              </span>
+            ) : (
+              suggested &&
+              !item.statusManual && (
+                <span className="text-xs text-muted-foreground">Follows the pieces below</span>
+              )
             )}
           </dd>
           <dt className="text-muted-foreground">Assignee</dt>
@@ -314,6 +326,10 @@ function DrawerBody({
                     {assignee.id === view.me.id ? "You" : assignee.name}
                   </span>
                 </>
+              ) : item.link?.assigneeName ? (
+                <span title="Assigned in Jira; not in Capsule">
+                  {item.link.assigneeName} <span className="text-faint">(in Jira)</span>
+                </span>
               ) : (
                 <span className="text-faint">Unassigned</span>
               )

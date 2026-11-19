@@ -406,7 +406,18 @@ export function OnboardingFlow({ initial }: { initial: OnboardingState }) {
                   <span className="text-[13px] leading-[18px] text-muted-foreground">{blurb}</span>
                 </span>
               </span>
-              {soon}
+              {name !== "Jira" || !initial.jira.configured ? (
+                soon
+              ) : initial.jira.connected ? (
+                <span className="inline-flex h-6 flex-none items-center gap-1 rounded-full bg-c-green px-2.5 text-xs font-medium text-c-green-fg">
+                  <Check size={12} weight="bold" aria-hidden="true" />
+                  Connected
+                </span>
+              ) : (
+                <Button asChild size="sm">
+                  <a href="/api/integrations/jira/connect?next=%2Fonboarding">Connect</a>
+                </Button>
+              )}
             </Row>
           ))}
         </Card>

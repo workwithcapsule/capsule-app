@@ -150,7 +150,7 @@ export function permissionsFor(
     editComponent,
     /** Check it off or set its status. */
     completeItem: (i: WorkItem) =>
-      onTeam && (editComponent(i.componentId) || i.assigneeId === me || leads(i)),
+      !i.link && onTeam && (editComponent(i.componentId) || i.assigneeId === me || leads(i)),
     renameItem: (i: WorkItem) =>
       onTeam &&
       (editComponent(i.componentId) || i.assigneeId === me || i.createdBy === me || leads(i)),
@@ -161,7 +161,7 @@ export function permissionsFor(
     editPiece: (p: Piece, i: WorkItem) => onTeam && (p.userId === me || manageItem(i)),
     /** Anyone on the team may take an unassigned item or let go of their own. */
     assignOptions: (i: WorkItem): "anyone" | "self" | "none" =>
-      !onTeam
+      !onTeam || i.link
         ? "none"
         : editComponent(i.componentId)
           ? "anyone"

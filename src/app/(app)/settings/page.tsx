@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Page } from "@/components/page";
 import type { ComponentColor } from "@/lib/design";
+import { jiraConfigured } from "@/lib/jira/client";
 import { siteOrigin } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 import { SettingsView } from "./settings-view";
@@ -13,18 +14,25 @@ async function Content({ searchParams }: { searchParams: PageProps<"/settings">[
   const { data: claims } = await supabase.auth.getClaims();
   const userId = claims?.claims?.sub as string | undefined;
   if (!userId) return null;
-  const [{ data: me }, { data: membership }, params, { data: apps }, origin] = await Promise.all([
-    supabase.from("users").select("name, email, email_notifications").eq("id", userId).single(),
-    supabase
-      .from("org_members")
-      .select("org_id, role")
-      .eq("user_id", userId)
-      .limit(1)
-      .maybeSingle(),
-    searchParams,
-    supabase.rpc("my_connected_apps"),
-    siteOrigin(),
-  ]);
+  const [{ data: me }, { data: membership }, params, { data: apps }, origin, { data: jira }] =
+    await Promise.all([
+      supabase.from("users").select("name, email, email_notifications").eq("id", userId).single(),
+      supabase
+        .from("org_members")
+        .select("org_id, role")
+        .eq("user_id", userId)
+        .limit(1)
+        .maybeSingle(),
+      searchParams,
+      supabase.rpc("my_connected_apps"),
+      siteOrigin(),
+      supabase
+        .from("integrations")
+        .select("status, site_name, site_url, account_name")
+        .eq("user_id", userId)
+        .eq("tool", "jira")
+        .maybeSingle(),
+    ]);
   const isAdmin = membership?.role === "admin";
   const { data: types } = isAdmin
     ? await supabase
@@ -53,6 +61,14 @@ async function Content({ searchParams }: { searchParams: PageProps<"/settings">[
       orgId={membership?.org_id ?? null}
       isAdmin={isAdmin}
       mcpUrl={`${origin}/mcp`}
+      jira={{
+        configured: jiraConfigured(),
+        connected: Boolean(jira),
+        reconnect: jira?.status === "needs_reconnect",
+        siteName: jira?.site_name ?? null,
+        siteUrl: jira?.site_url ?? null,
+        accountName: jira?.account_name ?? null,
+      }}
       apps={(
         (apps ?? []) as {
           client_id: string;

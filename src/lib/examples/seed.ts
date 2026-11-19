@@ -443,6 +443,53 @@ export async function seedExamples(admin: Admin, me: Me) {
     admin.from("work_items").update({ status: "in_review", status_manual: true }).eq("id", runbook),
     "Setting the runbook's status",
   );
+  // Linked Jira issues (step 14): what linked items look like, without
+  // connecting Jira. Not tied to anyone's Jira account, so they never sync,
+  // and their links point at a sample site that doesn't exist.
+  await must(
+    admin.from("work_items").insert(
+      [
+        [
+          "PART-42",
+          "Rank partners by weekly deal volume",
+          "in_review",
+          "Code Review",
+          "indeterminate",
+          mate.dana,
+          "Dana (example)",
+        ],
+        [
+          "PART-57",
+          "Leaderboard API rate limits",
+          "in_progress",
+          "In Progress",
+          "indeterminate",
+          null,
+          "Sam Ortiz",
+        ],
+      ].map(([key, title, status, statusName, category, assignee, assigneeName], i) => ({
+        org_id: org,
+        capsule_id: ex1,
+        component_id: ex1a,
+        title,
+        assignee_id: assignee,
+        status,
+        position: 50 + i,
+        created_by: me.id,
+        created_at: ago(20),
+        source: "jira",
+        source_key: key,
+        source_url: `https://example.atlassian.net/browse/${key}`,
+        source_id: `ex-${key}`,
+        source_title: title,
+        source_status: statusName,
+        source_status_category: category,
+        source_assignee: assigneeName,
+        synced_at: ago(0.2),
+      })),
+    ),
+    "Adding linked Jira examples",
+  );
   const piece = (title: string, comp: string, type: { name: string }) => ({
     title,
     component_id: comp,

@@ -122,6 +122,15 @@ async function describeCapsule(data: CapsuleData) {
           status: statusLabel(i.status),
           assignee: nameOf(i.assigneeId),
           note: i.note,
+          ...(i.link && {
+            jira: {
+              key: i.link.key,
+              url: i.link.url,
+              status: i.link.statusName,
+              assignee: i.link.assigneeName,
+              note: "Linked Jira issue: its status and assignee follow Jira.",
+            },
+          }),
           collaborators: data.pieces
             .filter((p) => p.itemId === i.id)
             .map((p) => ({
@@ -482,6 +491,10 @@ export function registerTools(server: McpServer) {
       const item = data.items.find((i) => i.id === work_item_id);
       if (!item) return fail(`That work item isn't on ${data.capsule.key}.`);
       const patch: Parameters<typeof updateWorkItem>[1] = {};
+      if (item.link && (status || assignee !== undefined))
+        return fail(
+          `${item.link.key} is linked from Jira, so its status and assignee follow Jira. Change them in Jira (${item.link.url}); Capsule picks it up shortly.`,
+        );
       if (status) {
         // As in the app: setting a status by hand on an item with
         // collaborators stops it following their parts.

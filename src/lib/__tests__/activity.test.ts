@@ -56,6 +56,14 @@ group("buildFeed", () => {
     expect(describe(entry, ctx)).toBe("moved the launch date from Dec 1 to Dec 15");
   });
 
+  it("says linked and unlinked for Jira issues", () => {
+    expect(
+      text([
+        ev(0, "item_added", { title: "Ranking service", component: "Tech", source_key: "ENG-142" }),
+      ]),
+    ).toEqual(["linked ENG-142 “Ranking service” to Tech"]);
+  });
+
   it("keeps an AI app's edits apart from the person's own, and remembers the app", () => {
     const feed = buildFeed([
       ev(0, "capsule_changed", { field: "status", from: "not_started", to: "in_progress" }),
