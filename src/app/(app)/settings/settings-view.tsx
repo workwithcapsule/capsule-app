@@ -4,11 +4,14 @@ import { useState, useTransition } from "react";
 import { useTheme } from "next-themes";
 import { Check, Copy, Monitor, Moon, Sparkle, Sun, X } from "@phosphor-icons/react";
 import { ColorIconPicker } from "@/components/color-icon-picker";
+import { ComponentIcon } from "@/components/component-icon";
+import { EditableText } from "@/components/editable-text";
 import { AddLine, Card, Row } from "@/components/setup";
 import { useToast } from "@/components/toaster";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input, Label } from "@/components/ui/input";
 import { nextColor, SUGGESTED_COMPONENTS } from "@/lib/component-catalog";
+import { COMPONENT_COLOR_CLASSES } from "@/lib/design";
 import { fmtRelative } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import {
@@ -20,7 +23,7 @@ import {
 } from "./actions";
 import type { ConnectedApp, JiraConnection, SettingsComponent } from "./types";
 
-type Tab = "profile" | "appearance" | "apps" | "components";
+type Tab = "profile" | "apps" | "components";
 
 let keySeq = 0;
 const newKey = () => `new-${++keySeq}`;
@@ -44,13 +47,12 @@ export function SettingsView(props: {
   const [tab, setTab] = useState<Tab>(props.initialTab);
   const tabs: [Tab, string][] = [
     ["profile", "Profile"],
-    ["appearance", "Appearance"],
     ["apps", "Connected apps"],
     ...(props.isAdmin ? ([["components", "Org components"]] as [Tab, string][]) : []),
   ];
 
   return (
-    <div className="flex max-w-[720px] flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div
         role="tablist"
         aria-label="Settings"
@@ -83,7 +85,6 @@ export function SettingsView(props: {
       </div>
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
         {tab === "profile" && <Profile {...props} />}
-        {tab === "appearance" && <Appearance />}
         {tab === "apps" && (
           <ConnectedApps mcpUrl={props.mcpUrl} initial={props.apps} jira={props.jira} />
         )}
@@ -204,6 +205,8 @@ function Profile({
           </button>
         </label>
       </section>
+
+      <Appearance />
     </div>
   );
 }
@@ -214,38 +217,43 @@ const THEMES = [
   { value: "system", label: "Match system", Icon: Monitor },
 ] as const;
 
+/** Theme (prototype: a row in the Profile tab with Light, Dark and Match system). */
 function Appearance() {
   const { theme, setTheme } = useTheme();
   return (
-    <section aria-labelledby="appearance-h" className="flex flex-col gap-3">
+    <section aria-labelledby="appearance-h" className="flex flex-col gap-2">
       <h2 id="appearance-h" className="text-base leading-6 font-semibold">
         Appearance
       </h2>
-      <div
-        role="radiogroup"
-        aria-labelledby="appearance-h"
-        className="grid gap-3 min-[560px]:grid-cols-3"
-      >
-        {THEMES.map(({ value, label, Icon }) => {
-          const on = (theme ?? "system") === value;
-          return (
-            <button
-              key={value}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              onClick={() => setTheme(value)}
-              className={cn(
-                "flex items-center gap-2.5 rounded-2xl border bg-surface p-4 text-left text-sm font-medium shadow-card",
-                on ? "border-foreground" : "border-border hover:border-border-strong",
-              )}
-            >
-              <Icon size={18} />
-              <span className="flex-1">{label}</span>
-              {on && <Check size={14} aria-hidden="true" />}
-            </button>
-          );
-        })}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4 shadow-card">
+        <span className="flex flex-col gap-0.5">
+          <span className="text-sm font-medium">Theme</span>
+          <span className="text-[13px] text-muted-foreground">Remembered in this browser.</span>
+        </span>
+        <span
+          role="radiogroup"
+          aria-labelledby="appearance-h"
+          className="inline-flex gap-0.5 rounded-full bg-subtle p-0.5"
+        >
+          {THEMES.map(({ value, label }) => {
+            const on = (theme ?? "system") === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => setTheme(value)}
+                className={cn(
+                  "h-7 rounded-full px-3 text-xs font-medium text-muted-foreground hover:text-foreground",
+                  on && "bg-seg-on text-foreground shadow-seg-on",
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </span>
       </div>
     </section>
   );
@@ -254,33 +262,57 @@ function Appearance() {
 function OrgComponents({ orgId, initial }: { orgId: string; initial: SettingsComponent[] }) {
   const toast = useToast();
   const [components, setComponents] = useState(initial);
-  const [saved, setSaved] = useState(JSON.stringify(initial));
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
-  const [pending, start] = useTransition();
-  const dirty = JSON.stringify(components) !== saved;
+  const [, start] = useTransition();
   const names = components.map((c) => c.name.trim().toLowerCase());
-  const suggestions = SUGGESTED_COMPONENTS.filter((s) => !names.includes(s.name.toLowerCase()));
 
-  const update = (key: string, patch: Partial<SettingsComponent>) =>
-    setComponents((list) => list.map((c) => (c.key === key ? { ...c, ...patch } : c)));
+  /**
+   * Saves as you go (prototype Organization tab): each change is saved right
+   * away; if it can't be, the list goes back to how it was.
+   */
+  function save(next: SettingsComponent[], message?: string): Promise<boolean> {
+    const before = components;
+    setComponents(next);
+    setError("");
+    return new Promise((resolve) =>
+      start(async () => {
+        const r = await saveOrgComponents(orgId, next);
+        if (!r.ok) {
+          setComponents(before);
+          setError(r.error);
+          return resolve(false);
+        }
+        setComponents(next.map((c) => (c.id ? c : { ...c, id: r.ids[c.key] })));
+        if (message) toast(message);
+        resolve(true);
+      }),
+    );
+  }
+
+  const patch = (key: string, p: Partial<SettingsComponent>) =>
+    components.map((c) => (c.key === key ? { ...c, ...p } : c));
 
   function add(name: string) {
-    const known = SUGGESTED_COMPONENTS.find(
-      (s) => s.name.toLowerCase() === name.trim().toLowerCase(),
+    const n = name.trim();
+    if (!n) return;
+    if (names.includes(n.toLowerCase())) return setError(`There’s already a ${n} component.`);
+    const known = SUGGESTED_COMPONENTS.find((s) => s.name.toLowerCase() === n.toLowerCase());
+    void save(
+      [
+        ...components,
+        known
+          ? { ...known, key: newKey() }
+          : {
+              key: newKey(),
+              name: n,
+              description: "",
+              color: nextColor(components.map((c) => c.color)),
+              icon: "box",
+            },
+      ],
+      `Added ${n}.`,
     );
-    setComponents((list) => [
-      ...list,
-      known
-        ? { ...known, key: newKey() }
-        : {
-            key: newKey(),
-            name: name.trim(),
-            description: "",
-            color: nextColor(list.map((c) => c.color)),
-            icon: "box",
-          },
-    ]);
   }
 
   return (
@@ -290,112 +322,81 @@ function OrgComponents({ orgId, initial }: { orgId: string; initial: SettingsCom
           Org components
         </h2>
         <p className="text-[13px] text-muted-foreground">
-          The functions every capsule is built from. Removing one only stops it being offered for
-          new capsules; capsules that already have it keep it.
+          The functions every capsule is built from. Click a name or description to change it.
+          Removing one only stops it being offered for new capsules; capsules that already have it
+          keep it.
         </p>
       </div>
-      {components.length > 0 && (
-        <Card>
-          {components.map((c) => (
-            <Row key={c.key} className="items-start">
-              <ColorIconPicker
-                name={c.name}
-                color={c.color}
-                icon={c.icon}
-                onColor={(color) => update(c.key, { color })}
-                onIcon={(icon) => update(c.key, { icon })}
-              />
-              <span className="flex min-w-0 flex-1 flex-col gap-1">
-                <label htmlFor={`sn-${c.key}`} className="sr-only">
-                  Component name
-                </label>
-                <Input
-                  id={`sn-${c.key}`}
-                  size="sm"
-                  className="w-full font-semibold"
-                  maxLength={60}
-                  value={c.name}
-                  onChange={(e) => update(c.key, { name: e.target.value })}
-                  aria-invalid={!c.name.trim() ? true : undefined}
-                />
-                <label htmlFor={`sd-${c.key}`} className="sr-only">
-                  Description for {c.name}
-                </label>
-                <Input
-                  id={`sd-${c.key}`}
-                  size="sm"
-                  className="w-full border-transparent text-muted-foreground hover:border-border"
-                  placeholder="Add a description"
-                  value={c.description}
-                  onChange={(e) => update(c.key, { description: e.target.value })}
-                />
-              </span>
-              <Button
-                variant="quiet"
-                size="icon"
-                aria-label={`Remove ${c.name || "component"}`}
-                onClick={() => setComponents((list) => list.filter((x) => x.key !== c.key))}
-              >
-                <X size={14} />
-              </Button>
-            </Row>
-          ))}
-        </Card>
-      )}
-      {suggestions.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {suggestions.map((s) => (
-            <button
-              key={s.name}
-              type="button"
-              onClick={() => add(s.name)}
-              className="inline-flex h-[30px] items-center gap-1.5 rounded-full border border-border bg-bg px-3 text-[13px] hover:bg-subtle"
+      <Card>
+        {components.map((c) => (
+          <Row key={c.key} className="group items-start">
+            <span
+              aria-hidden="true"
+              className={cn(
+                "mt-0.5 flex size-8 flex-none items-center justify-center rounded-lg",
+                COMPONENT_COLOR_CLASSES[c.color].tag,
+              )}
             >
-              + {s.name}
-            </button>
-          ))}
-        </div>
-      )}
-      <AddLine
-        id="s-cd"
-        label="Add your own component"
-        value={draft}
-        onChange={setDraft}
-        onAdd={() => {
-          if (draft.trim()) add(draft);
-          setDraft("");
-        }}
-      />
-      <FieldError>{error}</FieldError>
-      <div className="flex items-center gap-2">
-        <Button
-          variant="primary"
-          disabled={!dirty || pending}
-          onClick={() =>
-            start(async () => {
-              setError("");
-              const r = await saveOrgComponents(orgId, components);
-              if (!r.ok) return setError(r.error);
-              setSaved(JSON.stringify(components));
-              toast("Org components saved.");
-            })
-          }
-        >
-          {pending ? "Saving…" : "Save changes"}
-        </Button>
-        {dirty && (
-          <Button
-            variant="quiet"
-            disabled={pending}
-            onClick={() => {
-              setComponents(JSON.parse(saved));
-              setError("");
+              <ComponentIcon icon={c.icon} size={16} />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <EditableText
+                value={c.name}
+                label={`Name of ${c.name}`}
+                required
+                maxLength={60}
+                className="font-semibold"
+                onSave={(name) => save(patch(c.key, { name }), "Saved.")}
+              />
+              <EditableText
+                value={c.description}
+                label={`Description for ${c.name}`}
+                placeholder="Add a description"
+                maxLength={200}
+                className="text-[13px] text-muted-foreground"
+                onSave={(description) => save(patch(c.key, { description }), "Saved.")}
+              />
+            </span>
+            <ColorIconPicker
+              name={c.name}
+              color={c.color}
+              icon={c.icon}
+              onColor={(color) => void save(patch(c.key, { color }))}
+              onIcon={(icon) => void save(patch(c.key, { icon }))}
+            />
+            <Button
+              variant="quiet"
+              size="icon"
+              aria-label={`Remove ${c.name}`}
+              title="Remove"
+              className="laptop:opacity-0 laptop:group-hover:opacity-100 laptop:focus-visible:opacity-100"
+              onClick={async () => {
+                const before = components;
+                const ok = await save(components.filter((x) => x.key !== c.key));
+                if (ok)
+                  toast(`Removed ${c.name}. Capsules that have it keep it.`, {
+                    undo: () => void save(before),
+                  });
+              }}
+            >
+              <X size={14} />
+            </Button>
+          </Row>
+        ))}
+        <div className="border-t border-divider p-2">
+          <AddLine
+            id="s-cd"
+            label="Add a component, like Data or Partnerships"
+            value={draft}
+            onChange={setDraft}
+            onAdd={() => {
+              add(draft);
+              setDraft("");
             }}
-          >
-            Discard
-          </Button>
-        )}
-      </div>
+          />
+        </div>
+      </Card>
+      <FieldError>{error}</FieldError>
     </section>
   );
 }

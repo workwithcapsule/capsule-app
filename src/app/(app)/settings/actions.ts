@@ -42,10 +42,14 @@ export async function setEmailNotifications(on: boolean): Promise<Result> {
  * component only stops it being offered for new capsules: existing capsules
  * keep it. Adding back a removed name brings that component back.
  */
+/** Saved, with each component's id by its key (new ones get theirs here). */
+type SaveComponentsResult =
+  { ok: true; ids: Record<string, string> } | { ok: false; error: string };
+
 export async function saveOrgComponents(
   orgId: string,
   components: SettingsComponent[],
-): Promise<Result> {
+): Promise<SaveComponentsResult> {
   const names = components.map((c) => c.name.trim().toLowerCase());
   if (components.length === 0) return { ok: false, error: "Keep at least one component." };
   if (names.some((n) => !n)) return { ok: false, error: "Give every component a name." };
@@ -101,6 +105,7 @@ export async function saveOrgComponents(
       .eq("id", c.id!);
     if (error) return { ok: false, error: "Only org admins can change org components." };
   }
+  const ids: Record<string, string> = {};
   for (const [position, c] of list.entries()) {
     const row = {
       name: c.name.trim(),
@@ -110,13 +115,22 @@ export async function saveOrgComponents(
       position,
       archived_at: null,
     };
-    const { error } = c.id
-      ? await supabase.from("component_types").update(row).eq("id", c.id)
-      : await supabase.from("component_types").insert({ ...row, org_id: orgId });
-    if (error) return { ok: false, error: SOMETHING_WRONG };
+    if (c.id) {
+      const { error } = await supabase.from("component_types").update(row).eq("id", c.id);
+      if (error) return { ok: false, error: SOMETHING_WRONG };
+      ids[c.key] = c.id;
+    } else {
+      const { data, error } = await supabase
+        .from("component_types")
+        .insert({ ...row, org_id: orgId })
+        .select("id")
+        .single();
+      if (error || !data) return { ok: false, error: SOMETHING_WRONG };
+      ids[c.key] = data.id;
+    }
   }
   revalidatePath("/", "layout");
-  return { ok: true };
+  return { ok: true, ids };
 }
 
 /**

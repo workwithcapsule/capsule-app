@@ -47,13 +47,7 @@ async function Content({ searchParams }: { searchParams: PageProps<"/settings">[
   return (
     <SettingsView
       initialTab={
-        tab === "components" && isAdmin
-          ? "components"
-          : tab === "appearance"
-            ? "appearance"
-            : tab === "apps"
-              ? "apps"
-              : "profile"
+        tab === "components" && isAdmin ? "components" : tab === "apps" ? "apps" : "profile"
       }
       name={me?.name ?? ""}
       email={me?.email ?? ""}
@@ -97,7 +91,11 @@ async function Content({ searchParams }: { searchParams: PageProps<"/settings">[
 /** Settings (step 11): Profile, Appearance, Connected apps (step 13), and Org components for org admins. */
 export default function SettingsPage({ searchParams }: PageProps<"/settings">) {
   return (
-    <Page title="Settings">
+    <Page
+      title="Settings"
+      className="max-w-[820px]"
+      description="Your profile, how Capsule looks and the apps you’ve connected. Org admins also manage the org’s components here."
+    >
       <Suspense>
         <Content searchParams={searchParams} />
       </Suspense>
