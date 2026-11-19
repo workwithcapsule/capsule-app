@@ -310,7 +310,7 @@ export function NewCapsuleFlow({
             <button
               type="button"
               onClick={() => setStep({ kind: "scratch", outcome: step.error ? prompt.trim() : "" })}
-              className="font-medium text-foreground underline-offset-2 hover:underline"
+              className="font-medium text-foreground underline underline-offset-[3px]"
             >
               Fill in the fields
             </button>
