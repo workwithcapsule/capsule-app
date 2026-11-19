@@ -5,7 +5,20 @@ export function parseDate(iso: string): Date {
   return new Date(y, m - 1, d);
 }
 
-const MONTHS = ["Jan.", "Feb.", "Mar.", "Apr.", "May", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.", "Nov.", "Dec."];
+const MONTHS = [
+  "Jan.",
+  "Feb.",
+  "Mar.",
+  "Apr.",
+  "May",
+  "Jun.",
+  "Jul.",
+  "Aug.",
+  "Sep.",
+  "Oct.",
+  "Nov.",
+  "Dec.",
+];
 
 /** "Nov. 11 2026", always with the year (prototype fmtDate). */
 function fmtDay(date: Date): string {
@@ -45,4 +58,16 @@ export function fmtRelative(iso: string, now = new Date()): string {
   if (startOfToday.getTime() - then.getTime() < 6 * 86_400_000)
     return new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(then);
   return fmtDay(then);
+}
+
+/** How long ago, compactly: "Now", "12m", "5h", "2d", "3w" (prototype queue rows). */
+export function fmtSince(iso: string, now = new Date()): string {
+  const mins = Math.floor((now.getTime() - new Date(iso).getTime()) / 60_000);
+  if (mins < 1) return "Now";
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 14) return `${days}d`;
+  return `${Math.floor(days / 7)}w`;
 }

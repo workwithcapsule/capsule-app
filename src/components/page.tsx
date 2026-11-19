@@ -6,11 +6,14 @@ export function Page({
   description,
   children,
   className,
+  action,
 }: {
   title: React.ReactNode;
   description?: React.ReactNode;
   children?: React.ReactNode;
   className?: string;
+  /** A button at the top right, beside the title (prototype "New capsule"). */
+  action?: React.ReactNode;
 }) {
   return (
     <div
@@ -19,9 +22,12 @@ export function Page({
         className,
       )}
     >
-      <header className="flex flex-col gap-1.5">
-        <h1 className="text-[28px] leading-[34px] font-semibold tracking-[-0.02em]">{title}</h1>
-        {description && <p className="text-muted-foreground">{description}</p>}
+      <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <h1 className="text-[28px] leading-[34px] font-semibold tracking-[-0.02em]">{title}</h1>
+          {description && <p className="text-muted-foreground">{description}</p>}
+        </div>
+        {action}
       </header>
       {children}
     </div>

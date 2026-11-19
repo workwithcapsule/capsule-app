@@ -9,15 +9,29 @@ import { cn } from "@/lib/utils";
 export function NativeSelect({
   className,
   wrapperClassName,
+  prefix,
   children,
   ...props
-}: React.ComponentProps<"select"> & { wrapperClassName?: string }) {
+}: React.ComponentProps<"select"> & {
+  wrapperClassName?: string;
+  /** A muted word before the value, like "Sort:" (prototype). */
+  prefix?: string;
+}) {
   return (
     <span className={cn("relative inline-flex", wrapperClassName)}>
+      {prefix && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 left-2.5 z-[1] -translate-y-1/2 text-sm text-muted-foreground"
+        >
+          {prefix}
+        </span>
+      )}
       <select
         {...props}
         className={cn(
           "w-full cursor-pointer appearance-none rounded-[10px] border border-border bg-surface pr-9 pl-2.5 text-sm text-foreground outline-none focus:border-control",
+          prefix && "pl-[46px]",
           className,
         )}
       >

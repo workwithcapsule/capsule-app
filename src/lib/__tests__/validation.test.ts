@@ -67,7 +67,7 @@ describe("dates", () => {
   });
 });
 
-import { fmtRelative } from "../dates";
+import { fmtRelative, fmtSince } from "../dates";
 
 describe("relative times", () => {
   const now = new Date(2026, 10, 12, 15, 0);
@@ -78,5 +78,16 @@ describe("relative times", () => {
     expect(fmtRelative(new Date(2026, 10, 11, 18, 0).toISOString(), now)).toBe("Yesterday");
     expect(fmtRelative(new Date(2026, 10, 9, 10, 0).toISOString(), now)).toBe("Mon");
     expect(fmtRelative(new Date(2026, 10, 3, 10, 0).toISOString(), now)).toBe("Nov. 3 2026");
+  });
+});
+
+describe("time in the queue", () => {
+  const now = new Date(2026, 10, 12, 15, 0);
+  it("reads like the prototype's rows", () => {
+    expect(fmtSince(new Date(2026, 10, 12, 14, 59, 30).toISOString(), now)).toBe("Now");
+    expect(fmtSince(new Date(2026, 10, 12, 14, 48).toISOString(), now)).toBe("12m");
+    expect(fmtSince(new Date(2026, 10, 12, 10, 0).toISOString(), now)).toBe("5h");
+    expect(fmtSince(new Date(2026, 10, 10, 15, 0).toISOString(), now)).toBe("2d");
+    expect(fmtSince(new Date(2026, 9, 20, 15, 0).toISOString(), now)).toBe("3w");
   });
 });
