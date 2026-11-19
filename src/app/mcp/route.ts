@@ -25,7 +25,8 @@ const serverInfo = {
   title: "Capsule",
   version: "1.0.0",
   description: "Follow one outcome from idea to launch across every team's part of it.",
-  websiteUrl: "https://workwithcapsule.com",
+  // The app itself (its favicon is the Capsule mark), not the marketing site.
+  websiteUrl: SITE,
   icons: [
     { src: `${SITE}/apple-icon.png`, mimeType: "image/png", sizes: ["180x180"] },
     { src: `${SITE}/icon.svg`, mimeType: "image/svg+xml", sizes: ["any"] },
