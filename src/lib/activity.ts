@@ -227,9 +227,13 @@ export function describe(e: FeedEntry, ctx: DescribeContext): string {
       }
       break;
     case "item_added":
-      return `added ${quote(d.title)} to ${comp}`;
+      return d.source_key
+        ? `linked ${str(d.source_key)} ${quote(d.title)} to ${comp}`
+        : `added ${quote(d.title)} to ${comp}`;
     case "item_deleted":
-      return `deleted ${quote(d.title)} from ${comp}`;
+      return d.source_key
+        ? `unlinked ${str(d.source_key)} ${quote(d.title)} from ${comp}`
+        : `deleted ${quote(d.title)} from ${comp}`;
     case "item_changed":
       switch (d.field) {
         case "done":

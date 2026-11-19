@@ -30,7 +30,8 @@ If two docs disagree, `v1-scope.md` wins, then `build-decisions.md`, then `desig
 ## Data rules
 
 - Start from the schema in `tech-stack.md`. **For V1, build only:** orgs, users, org_members, spaces, space_members, component_types, capsules, components, component_people, work_items, followers, events, mentions, plus a new **attachments** table (capsule_id, component_id optional, kind file or link, name, url or storage path, link type, size, added_by). Also **dismissals** (rows removed from Needs your attention, per person) and **work_item_collaborators** (step 12: people on a work item, each with their part and status).
-- Leave out for now: agents, integrations, drafts, queue_items and capsule_old_keys. In V1, "Needs your attention" is worked out by query from work items and components.
+- Step 14 adds **integrations** (one row per person per connected tool, with tokens encrypted by the app and never readable by the browser).
+- Leave out for now: agents, drafts, queue_items and capsule_old_keys. In V1, "Needs your attention" is worked out by query from work items and components.
 - Keep the forward-compatible columns that cost nothing, such as `spaces.is_private` (always false in V1), `capsules.visibility` (always org in V1) and the work item source fields (always none).
 - **Every row carries its org_id.**
 - **Permissions live in one place:** a single database function answers "can this person see or edit this?", and every row-level security policy uses it. Use the permissions table in `design-decisions.md`, simplified to the V1 roles: org admin, capsule owner, component owner, member, follower. Followers are read-only and can't comment.
@@ -59,7 +60,7 @@ Do one step at a time, and tell me when a step is ready to check.
 After launch (see "After launch" in `v1-scope.md`):
 
 13. MCP server: use Capsule from Claude, ChatGPT and other MCP apps, signed in through Supabase OAuth, with attribution ("via Claude") and Settings → Connected apps
-14. Jira linking (one-way first)
+14. Jira linking (one-way: each person connects their own Jira account; linked items follow Jira's status and assignee)
 
 ## Orbit
 

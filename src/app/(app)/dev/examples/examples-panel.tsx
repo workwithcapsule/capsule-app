@@ -103,6 +103,24 @@ export function ExamplesPanel({ status }: { status: Status }) {
         </Link>
       </section>
 
+      <section aria-labelledby="jira-h" className="flex flex-col gap-3">
+        <h2 id="jira-h" className="text-base leading-6 font-semibold">
+          Jira linking
+        </h2>
+        <p className="text-[13px] text-muted-foreground">
+          EX-1’s Tech component has two linked Jira issues (PART-42 and PART-57), with their Jira
+          tag, a locked checkbox and Jira’s status and assignee. They point at a sample Jira site,
+          so the tag’s link won’t open. Once Jira is set up, the Jira button on the “Add a work
+          item” line connects your own Jira account and links real issues.
+        </p>
+        <Link
+          href="/capsules/ex-1"
+          className="inline-flex h-8 items-center self-start rounded-full border border-border bg-surface px-3.5 text-[13px] text-foreground no-underline hover:bg-subtle"
+        >
+          Open EX-1
+        </Link>
+      </section>
+
       <section aria-labelledby="mcp-h" className="flex flex-col gap-3">
         <h2 id="mcp-h" className="text-base leading-6 font-semibold">
           AI apps (MCP)

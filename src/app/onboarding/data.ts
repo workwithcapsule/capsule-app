@@ -1,4 +1,5 @@
 import "server-only";
+import { jiraConfigured } from "@/lib/jira/client";
 import { createClient } from "@/lib/supabase/server";
 import type { ComponentColor } from "@/lib/design";
 import type { OnboardingState } from "./types";
@@ -25,10 +26,18 @@ export async function loadOnboarding(): Promise<OnboardingState> {
     onboarding_step: number;
   } | null;
   if (!orgRow) {
-    return { email, yourName: me?.name ?? "", org: null, components: [], spaces: [], invites: [] };
+    return {
+      email,
+      yourName: me?.name ?? "",
+      org: null,
+      components: [],
+      spaces: [],
+      invites: [],
+      jira: { configured: jiraConfigured(), connected: false },
+    };
   }
 
-  const [{ data: comps }, { data: spaces }, { data: invites }] = await Promise.all([
+  const [{ data: comps }, { data: spaces }, { data: invites }, { data: jira }] = await Promise.all([
     supabase
       .from("component_types")
       .select("id, name, description, color, icon")
@@ -47,12 +56,19 @@ export async function loadOnboarding(): Promise<OnboardingState> {
       .is("accepted_at", null)
       .is("revoked_at", null)
       .order("created_at"),
+    supabase
+      .from("integrations")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("tool", "jira")
+      .maybeSingle(),
   ]);
 
   return {
     email,
     yourName: me?.name ?? "",
     org: { id: orgRow.id, name: orgRow.name, step: orgRow.onboarding_step },
+    jira: { configured: jiraConfigured(), connected: Boolean(jira) },
     components: (comps ?? []).map((c) => ({
       id: c.id,
       key: c.id,

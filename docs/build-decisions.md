@@ -122,3 +122,11 @@ Answers Christina gave before the build started. These sit alongside `v1-scope.m
 
 63. **Checking an AI app's token:** Supabase doesn't let OAuth app tokens call its "who am I" endpoint, so the database checks them instead (`public.current_app_session`): signature and expiry, that the token was issued to an app, that its session hasn't ended and that the person still has the app connected. Disconnect in Settings revokes the approval, so the app's next request is refused.
 64. **The app's badge:** a small purple sparkle in front of the person's avatar, with "via Claude" after their name. Real app logos can come later; the name always shows.
+
+## Step 14 answers (Nov. 19 2026)
+
+65. **Whose Jira access:** each person connects their own Jira account (Atlassian OAuth 2.0, scopes `read:jira-work`, `read:jira-user`, `offline_access`) the first time they link an issue, so they only ever search and link issues they can see in Jira. Refreshing a linked item uses the Jira account of the person who linked it; if they disconnect, the item keeps its last synced details.
+66. **Shaping from a pasted Jira link:** later, as its own step after linking works.
+67. **Creating Jira issues from Capsule:** not now. Capsule never writes to Jira.
+68. **How it's built:** a new `integrations` table holds each person's Jira connection; the access and refresh tokens are encrypted in the app (AES-256-GCM, `INTEGRATIONS_ENCRYPTION_KEY`) and only the server can read them. Linked items use the existing `work_items.source` fields plus the Jira status, assignee name, title as last synced, and who linked it. The database locks done, status and assignee on linked items for everyone but the server's sync. Jira's API is called directly (no new package). Freshness: on capsule open (older than 5 minutes) and a nightly Vercel Cron job; webhooks come with two-way sync.
+

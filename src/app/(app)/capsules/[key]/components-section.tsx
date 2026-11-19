@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   CalendarBlank,
   Check,
@@ -33,10 +34,13 @@ import {
   addComponent,
   addWorkItem,
   deleteWorkItem,
+  linkJiraIssue,
   removeComponent,
   restoreComponent,
   updateComponent,
 } from "../actions";
+import { jiraKeyFrom } from "@/lib/jira/issue";
+import { connectJiraHref, JiraLinkPicker, JiraTag } from "./jira-link";
 import type { useCapsule } from "./use-capsule";
 import { NativeSelect } from "@/components/ui/native-select";
 import { piecesDone } from "@/lib/work-items";
@@ -410,6 +414,57 @@ function ComponentPanel({
   const done = items.filter((i) => i.done).length;
   const owner = view.people.find((p) => p.id === k.ownerId) ?? null;
   const [draft, setDraft] = useState("");
+  const params = useSearchParams();
+  // Back from connecting Jira: say so, and reopen the picker on this component.
+  const backFromJira = params.get("linkjira") === "1" && params.get("component") === k.id;
+  const jiraResult = backFromJira ? params.get("jira") : null;
+  const addRow = useRef<HTMLDivElement>(null);
+  const toldJira = useRef(false);
+  useEffect(() => {
+    if (!jiraResult || toldJira.current) return;
+    toldJira.current = true;
+    scrollToMe(addRow.current);
+    toast(
+      jiraResult === "connected"
+        ? "Jira connected. Search for an issue to link."
+        : jiraResult === "cancelled"
+          ? "Jira wasn’t connected."
+          : "Couldn’t connect Jira. Try again.",
+    );
+    // Only once: take the "back from Jira" note out of the address, so the
+    // picker doesn't open again by itself later.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("jira");
+    url.searchParams.delete("linkjira");
+    window.history.replaceState(null, "", url);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jiraResult]);
+  // A pasted Jira key or link links the issue instead of adding plain text.
+  const pastedKey = view.jira.configured ? jiraKeyFrom(draft) : null;
+
+  function linkIssue(key: string, title = key) {
+    setDraft("");
+    const temp: WorkItem = {
+      id: tempId(),
+      componentId: k.id,
+      title,
+      done: false,
+      assigneeId: null,
+      createdBy: view.me.id,
+      position: items.length,
+      status: "not_started",
+      statusManual: false,
+      note: null,
+      link: { tool: "jira", key, url: "#", statusName: null, assigneeName: null, syncedAt: null },
+    };
+    change({ type: "addItem", item: temp }, () => linkJiraIssue({ componentId: k.id, key }), {
+      message: `Linked ${key} to ${k.name}.`,
+      undo: (data) => ({
+        op: { type: "removeItem", id: data?.id ?? temp.id },
+        save: () => deleteWorkItem(data!.id),
+      }),
+    });
+  }
 
   function setComponent(
     patch: Partial<CapsuleComponent>,
@@ -584,7 +639,10 @@ function ComponentPanel({
           </p>
         )}
         {perms.onTeam && (
-          <div className="mt-3 flex h-10 items-center gap-1.5 rounded-xl border border-dashed border-border pr-1.5 pl-2.5 text-muted-foreground focus-within:border-solid focus-within:border-control">
+          <div
+            ref={addRow}
+            className="mt-3 flex h-10 items-center gap-1.5 rounded-xl border border-dashed border-border pr-1.5 pl-2.5 text-muted-foreground focus-within:border-solid focus-within:border-control"
+          >
             <Plus size={14} aria-hidden="true" />
             <label htmlFor={`add-${k.id}`} className="sr-only">
               Add a work item to {k.name}
@@ -599,19 +657,42 @@ function ComponentPanel({
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
-                  addItem();
+                  if (pastedKey && view.jira.connected && !view.jira.reconnect)
+                    linkIssue(pastedKey);
+                  else if (!pastedKey) addItem();
                 }
               }}
               className="h-full min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-faint focus-visible:outline-none"
             />
-            <Button
-              variant={draft.trim() ? "primary" : "secondary"}
-              className="h-7 px-3"
-              disabled={!draft.trim()}
-              onClick={addItem}
-            >
-              Add
-            </Button>
+            {view.jira.configured && !pastedKey && (
+              <JiraLinkPicker
+                view={view}
+                componentId={k.id}
+                componentName={k.name}
+                defaultOpen={backFromJira && jiraResult === "connected"}
+                onLink={(hit) => linkIssue(hit.key, hit.title)}
+              />
+            )}
+            {pastedKey ? (
+              view.jira.connected && !view.jira.reconnect ? (
+                <Button variant="primary" className="h-7 px-3" onClick={() => linkIssue(pastedKey)}>
+                  Link {pastedKey}
+                </Button>
+              ) : (
+                <Button asChild variant="primary" className="h-7 px-3">
+                  <a href={connectJiraHref(view, k.id)}>Connect Jira to link {pastedKey}</a>
+                </Button>
+              )
+            ) : (
+              <Button
+                variant={draft.trim() ? "primary" : "secondary"}
+                className="h-7 px-3"
+                disabled={!draft.trim()}
+                onClick={addItem}
+              >
+                Add
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -637,9 +718,11 @@ function WorkItemRow({
   onOpen: () => void;
 }) {
   const temp = item.id.startsWith("temp-");
-  const canComplete = !temp && perms.completeItem(item);
+  const link = item.link ?? null;
+  // Linked items follow Jira for done, status and assignee.
+  const canComplete = !temp && !link && perms.completeItem(item);
   const canDelete = !temp && perms.deleteItem(item);
-  const assign = temp ? "none" : perms.assignOptions(item);
+  const assign = temp || link ? "none" : perms.assignOptions(item);
   const assignee = view.people.find((p) => p.id === item.assigneeId) ?? null;
   const strike = item.done ? "text-faint line-through" : "";
   const actions = useItemActions(item, view, change);
@@ -650,6 +733,17 @@ function WorkItemRow({
   const showStatus = item.status === "in_progress" || item.status === "in_review";
 
   function remove() {
+    if (link) {
+      // Unlinking changes nothing in Jira; Undo links it again.
+      change({ type: "removeItem", id: item.id }, () => deleteWorkItem(item.id), {
+        message: `Unlinked ${link.key} from ${componentName}.`,
+        undo: {
+          op: { type: "addItem", item },
+          save: () => linkJiraIssue({ componentId: item.componentId, key: link.key }),
+        },
+      });
+      return;
+    }
     change({ type: "removeItem", id: item.id }, () => deleteWorkItem(item.id), {
       message: `Deleted “${item.title}” from ${componentName}.`,
       undo: {
@@ -699,7 +793,11 @@ function WorkItemRow({
       ) : (
         <span
           aria-hidden="true"
-          title="Only the assignee, the lead or an owner can check this off"
+          title={
+            link
+              ? `Done comes from Jira (${link.statusName ?? "status unknown"})`
+              : "Only the assignee, the lead or an owner can check this off"
+          }
           className="flex size-[18px] flex-none items-center justify-center rounded-[5px] border-[1.5px] border-dash bg-subtle text-muted-foreground"
         >
           {item.done && <Check size={12} weight="bold" />}
@@ -720,6 +818,7 @@ function WorkItemRow({
             {item.done ? " (done)" : ` (${STATUS_META[item.status].label})`}, open details
           </span>
         </button>
+        {link && <JiraTag link={link} />}
         {item.note && <Notepad size={14} className="flex-none text-faint" aria-label="Has notes" />}
         {showStatus && <StatusPill status={item.status} className="h-5 flex-none px-2" />}
       </span>
@@ -747,7 +846,13 @@ function WorkItemRow({
                 aria-hidden="true"
                 className="size-[22px] flex-none rounded-full border border-dashed border-dash"
               />
-              Unassigned
+              {link?.assigneeName ? (
+                <span className="truncate" title="Assigned in Jira; not in Capsule">
+                  {link.assigneeName}
+                </span>
+              ) : (
+                "Unassigned"
+              )}
             </>
           )
         ) : (
@@ -767,8 +872,8 @@ function WorkItemRow({
       {canDelete ? (
         <button
           type="button"
-          aria-label={`Delete ${item.title}`}
-          title="Delete"
+          aria-label={link ? `Unlink ${link.key}` : `Delete ${item.title}`}
+          title={link ? "Unlink (nothing changes in Jira)" : "Delete"}
           onClick={remove}
           className="inline-flex size-7 flex-none items-center justify-center rounded-full text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-subtle hover:text-foreground focus-visible:opacity-100"
         >

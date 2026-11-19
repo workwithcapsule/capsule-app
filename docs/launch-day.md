@@ -70,3 +70,30 @@ Nobody can connect an AI app until this is on, so it's safe to merge first.
    Allow. *Check:* ask Claude "What needs me in Capsule?", then see Claude in
    Capsule → Settings → Connected apps. Anything Claude changes shows in
    Activity as "Christina via Claude".
+
+## Turning on Jira linking (step 14, once its pull request is merged)
+
+Nobody sees a Jira option until this is done, so it's safe to merge first.
+
+1. **Register Capsule with Atlassian.** You: go to
+   developer.atlassian.com → your profile → **Developer console** → **Create** →
+   **OAuth 2.0 integration**. Name it `Capsule`, agree to the terms, Create.
+2. **Permissions.** In the app: **Permissions** → **Jira API** → Add →
+   Configure. Under **Classic scopes**, add `read:jira-work` and
+   `read:jira-user`. Save.
+3. **Callback address.** **Authorization** → OAuth 2.0 (3LO) → Configure.
+   Callback URL: `https://app.workwithcapsule.com/api/integrations/jira/callback`.
+   Save.
+4. **Let other companies use it.** **Distribution** → Edit → **Sharing**.
+   Fill in the vendor name (Capsule), privacy policy link and the personal
+   data question, and save. Without this, only your own Atlassian account can
+   connect.
+5. **Keys into Vercel.** **Settings** shows a **Client ID** and a **Secret**.
+   In Vercel → capsule-app → Settings → Environment Variables (Production and
+   Preview) add `ATLASSIAN_CLIENT_ID` and `ATLASSIAN_CLIENT_SECRET` (mark the
+   secret Sensitive). *Claude* adds `INTEGRATIONS_ENCRYPTION_KEY` (a random key
+   you never need to see) and redeploys.
+6. **Try it.** Open a capsule, click the Jira button on a component's "Add a
+   work item" line, connect your Jira account, search for an issue and link
+   it. *Check:* the item shows its Jira key, status and assignee, and
+   Settings → Connected apps shows Jira.

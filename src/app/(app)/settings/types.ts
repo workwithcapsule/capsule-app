@@ -16,3 +16,13 @@ export type ConnectedApp = {
   connectedAt: string;
   lastUsedAt: string | null;
 };
+
+/** The person's Jira connection (step 14), for Settings → Connected apps. */
+export type JiraConnection = {
+  configured: boolean;
+  connected: boolean;
+  reconnect: boolean;
+  siteName: string | null;
+  siteUrl: string | null;
+  accountName: string | null;
+};

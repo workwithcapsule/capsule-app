@@ -131,3 +131,17 @@ export async function disconnectApp(clientId: string): Promise<Result> {
   revalidatePath("/settings");
   return { ok: true };
 }
+
+/** Disconnects the person's own Jira account (step 14). Linked items keep their last details. */
+export async function disconnectJira(): Promise<Result> {
+  const { supabase, userId } = await me();
+  if (!userId) return { ok: false, error: SOMETHING_WRONG };
+  const { error } = await supabase
+    .from("integrations")
+    .delete()
+    .eq("user_id", userId)
+    .eq("tool", "jira");
+  if (error) return { ok: false, error: "Couldn’t disconnect Jira. Try again." };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

@@ -131,6 +131,40 @@ const lastSource = (db: Db) =>
     [CAPSULE.en1],
   );
 
+const JIRA_ISSUE = (key = "ENG-142", status = "in_progress") =>
+  JSON.stringify({
+    key,
+    id: "10042",
+    title: "Ranking service",
+    url: `https://acme.atlassian.net/browse/${key}`,
+    status,
+    status_name: status === "done" ? "Done" : "In Progress",
+    status_category: status === "done" ? "done" : "indeterminate",
+    assignee_name: "Someone in Jira",
+  });
+
+/** Links ENG-142 to EN-1's Operations as Jon (on the team), then signs back in as `back`. */
+async function linkAsJon(db: Db, back: "christina" | "dana" | "jon" | "maya" | "bob" = "jon") {
+  await signIn(db, "jon");
+  const id = await value<string>(db, `select public.link_work_item($1, $2::jsonb)`, [
+    COMP.en1Ops,
+    JIRA_ISSUE(),
+  ]);
+  await signIn(db, back);
+  return id!;
+}
+
+/** Stores a Jira connection for someone, as the server does after they connect. */
+async function connectJira(db: Db, who: "christina" | "dana" | "jon") {
+  await db.query("reset role");
+  await db.query(
+    `insert into public.integrations (org_id, user_id, tool, site_id, site_url, site_name, account_name, access_token, refresh_token)
+     values ($1, $2, 'jira', 'cloud-1', 'https://acme.atlassian.net', 'Acme', 'Person', 'enc:access', 'enc:refresh')`,
+    [ORG.acme, P[who]],
+  );
+  await db.query("set local role authenticated");
+}
+
 const groups: Group[] = [
   {
     title: "Seeing capsules",
@@ -2733,6 +2767,209 @@ const groups: Group[] = [
         tries: "list connected apps",
         expect: "blocked",
         run: read(`select 1 from public.my_connected_apps()`),
+      },
+    ],
+  },
+  {
+    title: "Jira linking",
+    cases: [
+      {
+        who: "jon",
+        tries: "link a Jira issue to EN-1, logged with its key",
+        expect: "allowed",
+        run: async (db) => {
+          const r = await attempt(db, `select public.link_work_item($1, $2::jsonb)`, [
+            COMP.en1Ops,
+            JIRA_ISSUE(),
+          ]);
+          const logged = await value<string>(
+            db,
+            `select kind || ':' || (data ->> 'source_key') from public.events
+             where capsule_id = $1 order by created_at desc limit 1`,
+            [CAPSULE.en1],
+          );
+          const item = await value<string>(
+            db,
+            `select source || ':' || status || ':' || source_status from public.work_items where source_key = 'ENG-142'`,
+          );
+          return check(
+            r.allowed && logged === "item_added:ENG-142" && item === "jira:in_progress:In Progress",
+            `${r.detail}; ${logged}; ${item}`,
+          );
+        },
+      },
+      {
+        who: "jon",
+        tries: "link the same issue to EN-1 twice",
+        expect: "blocked",
+        run: async (db) => {
+          await linkAsJon(db);
+          return attempt(db, `select public.link_work_item($1, $2::jsonb)`, [
+            COMP.en1Tech,
+            JIRA_ISSUE(),
+          ]);
+        },
+      },
+      {
+        who: "bob",
+        tries: "link a Jira issue to EN-1, which he only follows",
+        expect: "blocked",
+        run: read(`select public.link_work_item($1, $2::jsonb)`, [COMP.en1Ops, JIRA_ISSUE()]),
+      },
+      {
+        who: "olga",
+        tries: "link a Jira issue to an Acme capsule",
+        expect: "blocked",
+        run: read(`select public.link_work_item($1, $2::jsonb)`, [COMP.en1Ops, JIRA_ISSUE()]),
+      },
+      {
+        who: "jon",
+        tries: "add a work item that claims to be from Jira without linking it",
+        expect: "blocked",
+        run: write(
+          `insert into public.work_items (org_id, capsule_id, component_id, title, created_by, source, source_key)
+           values ($1, $2, $3, 'Fake', $4, 'jira', 'ENG-1')`,
+          [ORG.acme, CAPSULE.en1, COMP.en1Ops, P.jon],
+        ),
+      },
+      {
+        who: "jon",
+        tries: "check off a linked item in Capsule (done follows Jira)",
+        expect: "blocked",
+        run: async (db) => {
+          const id = await linkAsJon(db);
+          return attempt(db, `update public.work_items set done = true where id = $1`, [id]);
+        },
+      },
+      {
+        who: "christina",
+        tries: "change a linked item's status or assignee as the capsule owner",
+        expect: "blocked",
+        run: async (db) => {
+          const id = await linkAsJon(db, "christina");
+          const a = await attempt(
+            db,
+            `update public.work_items set status = 'in_review' where id = $1`,
+            [id],
+          );
+          const b = await attempt(
+            db,
+            `update public.work_items set assignee_id = $2 where id = $1`,
+            [id, P.dana],
+          );
+          return check(a.allowed || b.allowed, `${a.detail}; ${b.detail}`);
+        },
+      },
+      {
+        who: "jon",
+        tries: "rename a linked item he linked (the rename stays in Capsule)",
+        expect: "allowed",
+        run: async (db) => {
+          const id = await linkAsJon(db);
+          return attempt(db, `update public.work_items set title = 'Ranking API' where id = $1`, [
+            id,
+          ]);
+        },
+      },
+      {
+        who: "server",
+        tries: "sync a linked item's status from Jira, with done following",
+        expect: "allowed",
+        run: async (db) => {
+          const id = await linkAsJon(db);
+          await db.query("reset role");
+          await db.query("select set_config('request.jwt.claims', $1, true)", [
+            JSON.stringify({ role: "service_role" }),
+          ]);
+          await db.query("set local role service_role");
+          await db.query(
+            `update public.work_items set status = 'done', source_status = 'Done' where id = $1`,
+            [id],
+          );
+          const v = await value<string>(
+            db,
+            `select status || ':' || done from public.work_items where id = $1`,
+            [id],
+          );
+          return check(v === "done:true", String(v));
+        },
+      },
+      {
+        who: "jon",
+        tries: "link an open issue to a Done component, which moves it back to In progress",
+        expect: "allowed",
+        run: async (db) => {
+          await db.query("reset role");
+          await db.query(`update public.components set status = 'done' where id = $1`, [
+            COMP.en1Ops,
+          ]);
+          await db.query("set local role authenticated");
+          await db.query(`select public.link_work_item($1, $2::jsonb)`, [
+            COMP.en1Ops,
+            JIRA_ISSUE("ENG-7"),
+          ]);
+          const s = await value<string>(db, `select status from public.components where id = $1`, [
+            COMP.en1Ops,
+          ]);
+          return check(s === "in_progress", String(s));
+        },
+      },
+      {
+        who: "christina",
+        tries: "see her own Jira connection",
+        expect: "allowed",
+        run: async (db) => {
+          await connectJira(db, "christina");
+          return attempt(db, `select site_name from public.integrations where tool = 'jira'`);
+        },
+      },
+      {
+        who: "christina",
+        tries: "read her own Jira tokens from the browser",
+        expect: "blocked",
+        run: async (db) => {
+          await connectJira(db, "christina");
+          return attempt(db, `select access_token, refresh_token from public.integrations`);
+        },
+      },
+      {
+        who: "dana",
+        tries: "see Christina's Jira connection",
+        expect: "blocked",
+        run: async (db) => {
+          await connectJira(db, "christina");
+          await signIn(db, "dana");
+          return attempt(db, `select 1 from public.integrations`);
+        },
+      },
+      {
+        who: "dana",
+        tries: "disconnect Christina's Jira",
+        expect: "blocked",
+        run: async (db) => {
+          await connectJira(db, "christina");
+          await signIn(db, "dana");
+          return attempt(db, `delete from public.integrations where user_id = $1`, [P.christina]);
+        },
+      },
+      {
+        who: "jon",
+        tries: "disconnect his own Jira",
+        expect: "allowed",
+        run: async (db) => {
+          await connectJira(db, "jon");
+          return attempt(db, `delete from public.integrations where user_id = $1`, [P.jon]);
+        },
+      },
+      {
+        who: "jon",
+        tries: "store a Jira connection himself (only the server can)",
+        expect: "blocked",
+        run: write(
+          `insert into public.integrations (org_id, user_id, tool, site_id, site_url, access_token)
+           values ($1, $2, 'jira', 'x', 'https://x.atlassian.net', 'stolen')`,
+          [ORG.acme, P.jon],
+        ),
       },
     ],
   },

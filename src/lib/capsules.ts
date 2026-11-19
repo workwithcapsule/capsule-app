@@ -5,6 +5,7 @@ import type { LinkType } from "@/lib/attachments";
 import { sortAttention, toAttentionRow } from "@/lib/attention";
 import type { CapsuleData, PersonRef } from "@/lib/capsule-types";
 import type { ItemStatus } from "@/lib/work-items";
+import { jiraConfigured, syncLinkedItems } from "@/lib/jira/client";
 
 const initialsOf = (name: string) => name.trim().charAt(0).toUpperCase() || "?";
 
@@ -54,6 +55,13 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
     .maybeSingle();
   if (!cap) return null;
 
+  // Linked Jira items not checked in the last 5 minutes refresh first, as far
+  // as Jira answers within a moment (build-decisions.md 68).
+  await Promise.race([
+    syncLinkedItems({ capsuleId: cap.id, olderThanMs: 5 * 60_000, limit: 100 }).catch(() => null),
+    new Promise((r) => setTimeout(r, 2500)),
+  ]);
+
   const [
     components,
     items,
@@ -65,6 +73,7 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
     attention,
     attachments,
     pieces,
+    jiraConn,
   ] = await Promise.all([
     supabase
       .from("components")
@@ -76,7 +85,7 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
     supabase
       .from("work_items")
       .select(
-        "id, component_id, title, done, assignee_id, created_by, position, created_at, status, status_manual, note",
+        "id, component_id, title, done, assignee_id, created_by, position, created_at, status, status_manual, note, source, source_key, source_url, source_status, source_assignee, synced_at",
       )
       .eq("capsule_id", cap.id)
       .order("position")
@@ -115,6 +124,12 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
       .select("id, work_item_id, user_id, piece, status, is_lead, created_by")
       .eq("capsule_id", cap.id)
       .order("created_at"),
+    supabase
+      .from("integrations")
+      .select("status, site_name")
+      .eq("user_id", userId)
+      .eq("tool", "jira")
+      .maybeSingle(),
   ]);
 
   const me = people.find((p) => p.id === userId) ?? { id: userId, name: "You", initials: "Y" };
@@ -165,6 +180,17 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
       status: i.status as ItemStatus,
       statusManual: i.status_manual,
       note: i.note,
+      link:
+        i.source === "jira" && i.source_key && i.source_url
+          ? {
+              tool: "jira" as const,
+              key: i.source_key,
+              url: i.source_url,
+              statusName: i.source_status,
+              assigneeName: i.source_assignee,
+              syncedAt: i.synced_at,
+            }
+          : null,
     })),
     pieces: (pieces.data ?? []).map((p) => ({
       id: p.id,
@@ -201,5 +227,11 @@ export async function loadCapsule(key: string): Promise<CapsuleData | null> {
       data: (e.data ?? {}) as Record<string, unknown>,
       at: e.created_at,
     })),
+    jira: {
+      configured: jiraConfigured(),
+      connected: Boolean(jiraConn.data),
+      reconnect: jiraConn.data?.status === "needs_reconnect",
+      siteName: jiraConn.data?.site_name ?? null,
+    },
   };
 }
