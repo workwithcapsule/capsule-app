@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Capsules" };
 async function List() {
   const data = await loadCapsulesList();
   if (!data) return null;
-  return <CapsulesTable rows={data.rows} spaces={data.spaces} />;
+  return <CapsulesTable rows={data.rows} spaces={data.spaces} meId={data.meId} />;
 }
 
 export default function CapsulesPage() {

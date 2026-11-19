@@ -42,9 +42,11 @@ function progressLabel(r: CapsuleRow) {
 export function CapsulesTable({
   rows,
   spaces,
+  meId,
 }: {
   rows: CapsuleRow[];
   spaces: { id: string; name: string }[];
+  meId: string;
 }) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
@@ -192,7 +194,9 @@ export function CapsulesTable({
                     {r.owner ? (
                       <span className="flex items-center gap-2 whitespace-nowrap">
                         <Avatar name={r.owner.name} initials={r.owner.initials} size={24} />
-                        <span className="text-[13px]">{r.owner.name}</span>
+                        <span className="text-[13px]">
+                          {r.owner.id === meId ? "You" : r.owner.name}
+                        </span>
                       </span>
                     ) : (
                       <span className="text-[13px] text-faint">No owner</span>

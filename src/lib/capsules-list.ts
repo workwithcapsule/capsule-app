@@ -23,7 +23,12 @@ export type CapsuleRow = {
   updatedAt: string;
 };
 
-export type CapsulesList = { rows: CapsuleRow[]; spaces: { id: string; name: string }[] };
+export type CapsulesList = {
+  rows: CapsuleRow[];
+  spaces: { id: string; name: string }[];
+  /** The signed-in person (shown as "You" in the Owner column). */
+  meId: string;
+};
 
 /** Capsules the signed-in person created, works on or follows. */
 export async function loadCapsulesList(): Promise<CapsulesList | null> {
@@ -114,5 +119,5 @@ export async function loadCapsulesList(): Promise<CapsulesList | null> {
     });
   }
 
-  return { rows, spaces: (spaces.data ?? []).map((s) => ({ id: s.id, name: s.name })) };
+  return { rows, spaces: (spaces.data ?? []).map((s) => ({ id: s.id, name: s.name })), meId: me };
 }

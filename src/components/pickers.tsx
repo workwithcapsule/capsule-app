@@ -64,6 +64,7 @@ export function PersonPicker({
   emptyLabel,
   meId,
   className,
+  caret = false,
 }: {
   value: string | null;
   people: PersonRef[];
@@ -73,6 +74,8 @@ export function PersonPicker({
   emptyLabel?: string;
   meId?: string;
   className?: string;
+  /** Show the ⌄ after the name (component owners, as in the prototype). */
+  caret?: boolean;
 }) {
   const current = people.find((p) => p.id === value) ?? null;
   return (
@@ -84,7 +87,7 @@ export function PersonPicker({
         {current ? (
           <>
             <Avatar name={current.name} initials={current.initials} />
-            <span className="truncate">{current.name}</span>
+            <span className="truncate">{current.id === meId ? "You" : current.name}</span>
           </>
         ) : (
           <>
@@ -95,6 +98,7 @@ export function PersonPicker({
             <span className="text-faint">{emptyLabel ?? "Choose"}</span>
           </>
         )}
+        {caret && <CaretDown size={10} className="flex-none text-muted-foreground" />}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-h-80 w-[240px] overflow-y-auto">
         <DropdownMenuLabel>{label}</DropdownMenuLabel>

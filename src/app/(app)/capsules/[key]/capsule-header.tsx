@@ -185,7 +185,7 @@ export function CapsuleHeader({
             ) : owner ? (
               <>
                 <Avatar name={owner.name} initials={owner.initials} />
-                {owner.name}
+                {owner.id === view.me.id ? "You" : owner.name}
               </>
             ) : (
               <span className="text-faint">No owner</span>

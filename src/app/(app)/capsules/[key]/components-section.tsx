@@ -569,6 +569,7 @@ function ComponentPanel({
               people={view.people}
               meId={view.me.id}
               emptyLabel="No owner"
+              caret
               label={`Owner of ${k.name}`}
               onPick={(ownerId) =>
                 setComponent(

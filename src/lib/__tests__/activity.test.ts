@@ -53,7 +53,7 @@ group("buildFeed", () => {
       ev(0, "capsule_changed", { field: "launch_date", from: "2026-12-01", to: "2026-12-05" }),
       ev(1, "capsule_changed", { field: "launch_date", from: "2026-12-05", to: "2026-12-15" }),
     ]);
-    expect(describe(entry, ctx)).toBe("moved the launch date from Dec 1 to Dec 15");
+    expect(describe(entry, ctx)).toBe("moved the launch date from Dec. 1 2026 to Dec. 15 2026");
   });
 
   it("says linked and unlinked for Jira issues", () => {

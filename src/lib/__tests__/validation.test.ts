@@ -56,8 +56,8 @@ import { daysUntil, fmtDate } from "../dates";
 describe("dates", () => {
   const today = new Date(2026, 10, 11); // Nov 11 2026
   it("formats like the prototype", () => {
-    expect(fmtDate("2026-12-01", today)).toBe("Dec 1");
-    expect(fmtDate("2027-01-15", today)).toBe("Jan 15, 2027");
+    expect(fmtDate("2026-12-01", today)).toBe("Dec. 1 2026");
+    expect(fmtDate("2027-01-15", today)).toBe("Jan. 15 2027");
     expect(fmtDate(null, today)).toBe("");
   });
   it("counts days to a date", () => {
@@ -76,6 +76,7 @@ describe("relative times", () => {
     expect(fmtRelative(new Date(2026, 10, 12, 14, 40).toISOString(), now)).toBe("20m ago");
     expect(fmtRelative(new Date(2026, 10, 12, 9, 0).toISOString(), now)).toBe("6h ago");
     expect(fmtRelative(new Date(2026, 10, 11, 18, 0).toISOString(), now)).toBe("Yesterday");
-    expect(fmtRelative(new Date(2026, 10, 3, 10, 0).toISOString(), now)).toBe("Nov 3");
+    expect(fmtRelative(new Date(2026, 10, 9, 10, 0).toISOString(), now)).toBe("Mon");
+    expect(fmtRelative(new Date(2026, 10, 3, 10, 0).toISOString(), now)).toBe("Nov. 3 2026");
   });
 });

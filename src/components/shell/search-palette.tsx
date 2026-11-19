@@ -21,6 +21,15 @@ export function SearchPalette() {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<SearchHit[] | null>(null);
   const [active, setActive] = useState(0);
+  // Where the sidebar's Search box is: the list drops down from it, as in the
+  // prototype. Null when the sidebar is hidden (narrow windows): then it
+  // opens near the top of the page instead.
+  const [anchor, setAnchor] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const [, start] = useTransition();
   const seq = useRef(0);
 
@@ -30,6 +39,14 @@ export function SearchPalette() {
     openRef.current = next;
     setOpen(next);
     if (next) {
+      const box = [...document.querySelectorAll<HTMLElement>("[data-search-anchor]")]
+        .map((el) => el.getBoundingClientRect())
+        .find((r) => r.width > 0 && r.height > 0 && r.left >= 0);
+      setAnchor(
+        box
+          ? { top: box.top, left: box.left, width: Math.max(box.width, 320), height: box.height }
+          : null,
+      );
       setQ("");
       setHits(null);
       run("");
@@ -76,10 +93,22 @@ export function SearchPalette() {
         <DialogPrimitive.Overlay className="fixed inset-0 z-[75] bg-transparent" />
         <DialogPrimitive.Content
           aria-describedby={undefined}
-          className="fixed top-[12vh] left-1/2 z-[76] w-[560px] max-w-[calc(100vw-32px)] -translate-x-1/2 overflow-hidden rounded-2xl border border-border bg-surface text-foreground shadow-pop outline-none data-[state=open]:animate-in data-[state=open]:duration-150 data-[state=open]:fade-in-0 data-[state=open]:zoom-in-[0.98] motion-reduce:data-[state=open]:animate-none"
+          style={anchor ? { top: anchor.top, left: anchor.left, width: anchor.width } : undefined}
+          className={cn(
+            "fixed z-[76] max-w-[calc(100vw-32px)] overflow-hidden border border-border bg-surface text-foreground shadow-pop outline-none data-[state=open]:animate-in data-[state=open]:duration-150 data-[state=open]:fade-in-0 motion-reduce:data-[state=open]:animate-none",
+            anchor
+              ? "rounded-[10px]"
+              : "top-[12vh] left-1/2 w-[560px] -translate-x-1/2 rounded-2xl data-[state=open]:zoom-in-[0.98]",
+          )}
         >
           <DialogPrimitive.Title className="sr-only">Search capsules</DialogPrimitive.Title>
-          <div className="flex items-center gap-2 border-b border-divider px-4">
+          <div
+            className={cn(
+              "flex items-center gap-2 border-b border-divider",
+              anchor ? "px-3" : "px-4",
+            )}
+            style={anchor ? { height: anchor.height } : undefined}
+          >
             <MagnifyingGlass
               size={16}
               className="flex-none text-muted-foreground"
@@ -97,7 +126,7 @@ export function SearchPalette() {
               aria-controls="search-results"
               aria-activedescendant={hits?.length ? `search-hit-${active}` : undefined}
               value={q}
-              placeholder="Search capsules by name or key"
+              placeholder={anchor ? "Search" : "Search capsules by name or key"}
               onChange={(e) => {
                 setQ(e.target.value);
                 run(e.target.value);
@@ -113,8 +142,14 @@ export function SearchPalette() {
                   go(hits[active]);
                 }
               }}
-              className="h-[52px] min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-faint focus-visible:outline-none"
+              className={cn(
+                "min-w-0 flex-1 bg-transparent outline-none placeholder:text-faint focus-visible:outline-none",
+                anchor ? "h-full text-sm" : "h-[52px] text-base",
+              )}
             />
+            {anchor && (
+              <span className="flex-none font-mono text-xs text-muted-foreground">esc</span>
+            )}
           </div>
           <div className="max-h-[360px] overflow-y-auto py-1.5">
             {hits === null ? (
