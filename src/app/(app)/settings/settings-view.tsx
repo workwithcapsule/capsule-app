@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useTheme } from "next-themes";
+import { Avatar } from "@/components/avatar";
 import { Check, Copy, Monitor, Moon, Sparkle, Sun, X } from "@phosphor-icons/react";
 import { ColorIconPicker } from "@/components/color-icon-picker";
 import { ComponentIcon } from "@/components/component-icon";
@@ -35,6 +36,7 @@ const newKey = () => `new-${++keySeq}`;
 export function SettingsView(props: {
   initialTab: Tab;
   name: string;
+  orgName: string;
   email: string;
   emailNotifications: boolean;
   orgId: string | null;
@@ -99,10 +101,12 @@ export function SettingsView(props: {
 function Profile({
   name: initialName,
   email,
+  orgName,
   emailNotifications,
 }: {
   name: string;
   email: string;
+  orgName: string;
   emailNotifications: boolean;
 }) {
   const toast = useToast();
@@ -118,6 +122,19 @@ function Profile({
         <h2 id="profile-h" className="sr-only">
           Profile
         </h2>
+        {/* Your initial in a circle, as in the prototype (no photo upload in V1). */}
+        <div className="flex items-center gap-3.5">
+          <Avatar
+            name={saved}
+            initials={saved.trim().charAt(0).toUpperCase() || "?"}
+            size={48}
+            me
+          />
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate font-semibold">{saved || "You"}</span>
+            {orgName && <span className="truncate text-xs text-muted-foreground">{orgName}</span>}
+          </span>
+        </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="s-name">Your name</Label>
           <div className="flex gap-2">

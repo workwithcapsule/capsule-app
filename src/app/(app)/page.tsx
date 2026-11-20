@@ -16,10 +16,7 @@ async function HomeContent() {
       </div>
       <section aria-labelledby="attn-h" className="flex flex-col gap-3">
         <h2 id="attn-h" className="text-base leading-6 font-semibold">
-          Needs your attention{" "}
-          {data.attention.length > 0 && (
-            <span className="font-normal text-muted-foreground">{data.attention.length}</span>
-          )}
+          Needs your attention
         </h2>
         <AttentionList
           rows={data.attention}

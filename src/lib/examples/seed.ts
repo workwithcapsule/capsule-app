@@ -371,7 +371,7 @@ export async function seedExamples(admin: Admin, me: Me) {
 
   // Work item collaborators and statuses (step 12). "Ship the leaderboard
   // page" has three people on it, you as the lead, and follows their pieces
-  // (In Progress). On Jon's runbook you have a part (it shows on Home), and
+  // (In progress). On Jon's runbook you have a part (it shows on Home), and
   // Jon set the status by hand, so the drawer offers "Use suggestion".
   const item = async (
     comp: string,

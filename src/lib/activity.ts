@@ -157,7 +157,7 @@ const statusLabel = (v: unknown) => STATUS_META[v as Status]?.label ?? String(v 
 const quote = (v: unknown) => `“${str(v)}”`;
 const possessive = (name: string) => (name === "you" ? "your" : `${name}’s`);
 
-/** What happened, after the person's name: "moved Tech to In Review". */
+/** What happened, after the person's name: "moved Tech to In review". */
 export function describe(e: FeedEntry, ctx: DescribeContext): string {
   const d = e.data;
   const from = e.from ?? d.from;

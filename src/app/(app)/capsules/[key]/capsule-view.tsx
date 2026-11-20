@@ -46,8 +46,7 @@ export function CapsuleView({ initial }: { initial: CapsuleData }) {
             {perms.onTeam && view.needsMe.length > 0 && (
               <section aria-labelledby="nyh-h" className="flex flex-col gap-3">
                 <h2 id="nyh-h" className="text-base leading-6 font-semibold">
-                  Needs you here{" "}
-                  <span className="font-normal text-muted-foreground">{view.needsMe.length}</span>
+                  Needs you here
                 </h2>
                 <AttentionList
                   rows={view.needsMe}

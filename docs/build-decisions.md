@@ -130,3 +130,10 @@ Answers Christina gave before the build started. These sit alongside `v1-scope.m
 67. **Creating Jira issues from Capsule:** not now. Capsule never writes to Jira.
 68. **How it's built:** a new `integrations` table holds each person's Jira connection; the access and refresh tokens are encrypted in the app (AES-256-GCM, `INTEGRATIONS_ENCRYPTION_KEY`) and only the server can read them. Linked items use the existing `work_items.source` fields plus the Jira status, assignee name, title as last synced, and who linked it. The database locks done, status and assignee on linked items for everyone but the server's sync. Jira's API is called directly (no new package). Freshness: on capsule open (older than 5 minutes) and a nightly Vercel Cron job; webhooks come with two-way sync.
 
+
+## Audit follow-ups (Nov. 20 2026)
+
+69. **Status words are sentence case:** "Not started", "In progress", "In review", "Done", "Blocked" (matches the prototype; the color table in design-decisions.md lists the same statuses).
+70. **No counts after "Needs your attention" (Home) or "Needs you here" (capsule page).** The sidebar already shows the count next to Home.
+71. **Profile shows your initial in a circle**, with your name and org, as in the prototype. No photo upload in V1.
+72. **Review page:** Space, Date and Owner stay in the top card, and unused components stay as "+ Name" chips.
