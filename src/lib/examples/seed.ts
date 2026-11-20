@@ -193,6 +193,7 @@ export async function seedExamples(admin: Admin, me: Me) {
     owner: string,
     status: string,
     launch: number,
+    createdHoursAgo = 24 * 6,
   ) =>
     (
       await must(
@@ -207,7 +208,7 @@ export async function seedExamples(admin: Admin, me: Me) {
             created_by: owner,
             status,
             launch_date: dateIn(launch),
-            created_at: ago(24 * 6),
+            created_at: ago(createdHoursAgo),
           })
           .select("id, number")
           .single(),
@@ -672,7 +673,7 @@ export async function seedExamples(admin: Admin, me: Me) {
     "Every partner hears about the new program in one email.",
     mate.dana,
     "in_progress",
-    18,
+    12, // within two weeks, so its unowned component warns on Home's Your capsules
   );
   const ex2a = await component(ex2, A, mate.dana, "done", -2, 0);
   const ex2b = await component(
@@ -684,6 +685,8 @@ export async function seedExamples(admin: Admin, me: Me) {
     1,
     "Announcement approved and scheduled",
   );
+  // No owner yet: "… has no owner" on Home's Your capsules (the owner, Dana, gets the row).
+  await component(ex2, C, null, "not_started", 10, 2);
   await items(ex2, ex2a, [["Pull the partner list", mate.dana, true]]);
   await items(ex2, ex2b, [
     ["Draft the announcement", me.id],
@@ -785,6 +788,22 @@ export async function seedExamples(admin: Admin, me: Me) {
   const ex4a = await component(ex4, A, mate.jon, "not_started", 30, 0);
   await items(ex4, ex4a, [["Scope the referral rewards", mate.jon]]);
   await event(ex4, mate.jon, "capsule_created", { name: "Partner referral program" }, 24);
+
+  // EX-5: You follow it, it's new and on track, and it launches this week -------
+  const ex5 = await capsule(
+    "Partner summit kickoff",
+    "Every partner leaves the summit with a plan for next quarter.",
+    mate.dana,
+    "in_progress",
+    5,
+    20, // created yesterday by Dana: "New" on Home's Your capsules
+  );
+  const ex5a = await component(ex5, A, mate.dana, "done", -1, 0);
+  const ex5b = await component(ex5, B, mate.jon, "in_progress", 4, 1);
+  await items(ex5, ex5a, [["Book the venue", mate.dana, true]]);
+  await items(ex5, ex5b, [["Send the agenda", mate.jon]]);
+  await follow(ex5, me.id, 18);
+  await event(ex5, mate.dana, "capsule_created", { name: "Partner summit kickoff" }, 20);
 
   return exampleStatus(admin, org);
 }
