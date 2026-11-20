@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { loadPeople } from "@/lib/capsules";
+import type { SummaryComponent } from "@/lib/capsule-summary";
 import type { Status } from "@/lib/design";
 import type { PersonRef } from "@/lib/capsule-types";
 
@@ -12,7 +13,11 @@ export type CapsuleRow = {
   launchDate: string | null;
   space: { id: string; name: string };
   owner: PersonRef | null;
-  componentStatuses: { name: string; status: Status }[];
+  components: SummaryComponent[];
+  /** The owner, component owners and collaborators (Home's team faces). */
+  team: PersonRef[];
+  /** Created in the last 3 days by someone else (Home's "New" tag). */
+  isNew: boolean;
   /** How this person relates to it (prototype filters). */
   created: boolean;
   working: boolean;
@@ -48,18 +53,16 @@ export async function loadCapsulesList(): Promise<CapsulesList | null> {
   const [caps, comps, collaborators, items, follows, spaces, people] = await Promise.all([
     supabase
       .from("capsules")
-      .select("id, number, name, status, launch_date, owner_id, created_by, updated_at, space_id")
+      .select(
+        "id, number, name, status, launch_date, owner_id, created_by, created_at, updated_at, space_id",
+      )
       .eq("org_id", orgId)
       .is("archived_at", null),
     supabase
       .from("components")
       .select("capsule_id, owner_id, status, updated_at, position, component_types(name)")
       .eq("org_id", orgId),
-    supabase
-      .from("component_people")
-      .select("capsule_id, user_id")
-      .eq("org_id", orgId)
-      .eq("user_id", me),
+    supabase.from("component_people").select("capsule_id, user_id").eq("org_id", orgId),
     supabase
       .from("work_items")
       .select("capsule_id, assignee_id, done, updated_at")
@@ -72,7 +75,10 @@ export async function loadCapsulesList(): Promise<CapsulesList | null> {
   const spaceById = new Map((spaces.data ?? []).map((s) => [s.id, s]));
   const personById = new Map(people.map((p) => [p.id, p]));
   const followed = new Set((follows.data ?? []).map((f) => f.capsule_id));
-  const onComponent = new Set((collaborators.data ?? []).map((c) => c.capsule_id));
+  const onComponent = new Set(
+    (collaborators.data ?? []).filter((c) => c.user_id === me).map((c) => c.capsule_id),
+  );
+  const newSince = new Date(Date.now() - 3 * 86_400_000).toISOString();
 
   const rows: CapsuleRow[] = [];
   for (const c of caps.data ?? []) {
@@ -107,10 +113,21 @@ export async function loadCapsulesList(): Promise<CapsulesList | null> {
       launchDate: c.launch_date,
       space: { id: c.space_id, name: space?.name ?? "" },
       owner: c.owner_id ? (personById.get(c.owner_id) ?? null) : null,
-      componentStatuses: myComps.map((k) => ({
+      components: myComps.map((k) => ({
         name: (k.component_types as unknown as { name: string } | null)?.name ?? "",
         status: k.status as Status,
+        hasOwner: Boolean(k.owner_id),
       })),
+      team: [
+        ...new Set([
+          c.owner_id,
+          ...myComps.map((k) => k.owner_id),
+          ...(collaborators.data ?? []).filter((x) => x.capsule_id === c.id).map((x) => x.user_id),
+        ]),
+      ]
+        .map((id) => (id ? personById.get(id) : undefined))
+        .filter((x): x is PersonRef => Boolean(x)),
+      isNew: c.created_by !== me && c.created_at > newSince,
       created,
       working,
       following,

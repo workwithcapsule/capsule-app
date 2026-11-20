@@ -8,6 +8,7 @@ import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/ui/button";
 import type { CapsuleRow } from "@/lib/capsules-list";
 import { fmtDate, fmtRelative } from "@/lib/dates";
+import { plural, progressLabel } from "@/lib/capsule-summary";
 import { cn } from "@/lib/utils";
 import { NativeSelect } from "@/components/ui/native-select";
 
@@ -28,17 +29,6 @@ const SEG: Record<string, string> = {
   in_progress: "bg-p-prog",
   in_review: "bg-p-rev",
 };
-const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
-
-function progressLabel(r: CapsuleRow) {
-  const total = r.componentStatuses.length;
-  const done = r.componentStatuses.filter((k) => k.status === "done").length;
-  if (r.status === "blocked") return "Blocked";
-  if (r.status === "done" || (total && done === total)) return "Done";
-  if (!r.componentStatuses.some((k) => k.status !== "not_started")) return "Not started";
-  return `${done} of ${total} done`;
-}
-
 export function CapsulesTable({
   rows,
   spaces,
@@ -206,7 +196,7 @@ export function CapsulesTable({
                   <td className="px-3 py-3.5">
                     <div className="flex flex-col gap-1.5">
                       <div className="flex w-[140px] gap-[3px]" aria-hidden="true">
-                        {r.componentStatuses.map((k, i) => (
+                        {r.components.map((k, i) => (
                           <span
                             key={i}
                             title={k.name}
