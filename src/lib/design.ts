@@ -52,9 +52,9 @@ export const STATUSES = ["not_started", "in_progress", "in_review", "done", "blo
 export type Status = (typeof STATUSES)[number];
 
 export const STATUS_META: Record<Status, { label: string; color: ComponentColor }> = {
-  not_started: { label: "Not Started", color: "gray" },
-  in_progress: { label: "In Progress", color: "blue" },
-  in_review: { label: "In Review", color: "amber" },
+  not_started: { label: "Not started", color: "gray" },
+  in_progress: { label: "In progress", color: "blue" },
+  in_review: { label: "In review", color: "amber" },
   done: { label: "Done", color: "green" },
   blocked: { label: "Blocked", color: "red" },
 };

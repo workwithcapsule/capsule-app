@@ -48,7 +48,7 @@ group("buildFeed", () => {
       ev(0, "capsule_changed", { field: "status", from: "not_started", to: "in_progress" }),
       ev(2, "capsule_changed", { field: "status", from: "in_progress", to: "in_review" }),
     ]);
-    expect(feed).toEqual(["moved the capsule to In Review"]);
+    expect(feed).toEqual(["moved the capsule to In review"]);
     const [entry] = buildFeed([
       ev(0, "capsule_changed", { field: "launch_date", from: "2026-12-01", to: "2026-12-05" }),
       ev(1, "capsule_changed", { field: "launch_date", from: "2026-12-05", to: "2026-12-15" }),

@@ -19,7 +19,7 @@ async function Content({ searchParams }: { searchParams: PageProps<"/settings">[
       supabase.from("users").select("name, email, email_notifications").eq("id", userId).single(),
       supabase
         .from("org_members")
-        .select("org_id, role")
+        .select("org_id, role, orgs(name)")
         .eq("user_id", userId)
         .limit(1)
         .maybeSingle(),
@@ -51,6 +51,7 @@ async function Content({ searchParams }: { searchParams: PageProps<"/settings">[
       }
       name={me?.name ?? ""}
       email={me?.email ?? ""}
+      orgName={(membership?.orgs as { name?: string } | null)?.name ?? ""}
       emailNotifications={me?.email_notifications !== false}
       orgId={membership?.org_id ?? null}
       isAdmin={isAdmin}

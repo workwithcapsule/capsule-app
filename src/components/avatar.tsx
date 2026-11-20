@@ -11,7 +11,7 @@ export function Avatar({
 }: {
   name: string;
   initials: string;
-  size?: 22 | 24 | 28 | 32;
+  size?: 22 | 24 | 28 | 32 | 48;
   me?: boolean;
   className?: string;
 }) {
@@ -22,7 +22,9 @@ export function Avatar({
         ? "text-[11px]"
         : size <= 28
           ? "text-xs"
-          : "text-[13px]";
+          : size <= 32
+            ? "text-[13px]"
+            : "text-lg";
   return (
     <span
       title={name}

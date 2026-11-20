@@ -69,13 +69,13 @@ describe("activity sentences for pieces", () => {
       say(
         ev("piece_changed", { user: DANA, field: "status", from: "not_started", to: "in_review" }),
       ),
-    ).toBe("moved Dana’s part of “Ship it” to In Review");
+    ).toBe("moved Dana’s part of “Ship it” to In review");
     expect(say(ev("piece_changed", { user: DANA, field: "lead", from: false, to: true }))).toBe(
       "made Dana the lead on “Ship it”",
     );
     expect(
       say(ev("item_changed", { field: "status", from: "not_started", to: "in_progress" })),
-    ).toBe("moved “Ship it” to In Progress");
+    ).toBe("moved “Ship it” to In progress");
   });
 
   it("hides someone added and removed again", () => {
