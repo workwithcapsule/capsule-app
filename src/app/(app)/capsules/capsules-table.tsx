@@ -42,9 +42,11 @@ function progressLabel(r: CapsuleRow) {
 export function CapsulesTable({
   rows,
   spaces,
+  meId,
 }: {
   rows: CapsuleRow[];
   spaces: { id: string; name: string }[];
+  meId: string;
 }) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
@@ -76,7 +78,20 @@ export function CapsulesTable({
 
   return (
     <div className="flex flex-col gap-4">
+      {/* One row, as in the prototype: search, filters, then space and sort on the right. */}
       <div className="flex flex-wrap items-center gap-2">
+        <label className="flex h-[38px] w-full max-w-[240px] items-center gap-2 rounded-[10px] border border-border bg-surface px-3 text-muted-foreground focus-within:border-control">
+          <MagnifyingGlass size={14} aria-hidden="true" />
+          <span className="sr-only">Search capsules</span>
+          <input
+            type="text"
+            placeholder="Search capsules"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            autoComplete="off"
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-faint focus-visible:outline-none"
+          />
+        </label>
         {FILTERS.map(([f, label]) => (
           <button
             key={f}
@@ -96,20 +111,7 @@ export function CapsulesTable({
             </span>
           </button>
         ))}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="flex h-[38px] w-full max-w-[300px] items-center gap-2 rounded-[10px] border border-border bg-surface px-3 text-muted-foreground focus-within:border-control">
-          <MagnifyingGlass size={14} aria-hidden="true" />
-          <span className="sr-only">Search capsules</span>
-          <input
-            type="text"
-            placeholder="Search by name, key or owner"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            autoComplete="off"
-            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-faint focus-visible:outline-none"
-          />
-        </label>
+        <span className="grow" aria-hidden="true" />
         <label className="sr-only" htmlFor="caps-space">
           Space
         </label>
@@ -134,6 +136,7 @@ export function CapsulesTable({
           value={sort}
           onChange={(e) => setSort(e.target.value as Sort)}
           className="h-[38px]"
+          prefix="Sort:"
         >
           <option value="attention">Needs you first</option>
           <option value="launch">Launch date</option>
@@ -192,7 +195,9 @@ export function CapsulesTable({
                     {r.owner ? (
                       <span className="flex items-center gap-2 whitespace-nowrap">
                         <Avatar name={r.owner.name} initials={r.owner.initials} size={24} />
-                        <span className="text-[13px]">{r.owner.name}</span>
+                        <span className="text-[13px]">
+                          {r.owner.id === meId ? "You" : r.owner.name}
+                        </span>
                       </span>
                     ) : (
                       <span className="text-[13px] text-faint">No owner</span>

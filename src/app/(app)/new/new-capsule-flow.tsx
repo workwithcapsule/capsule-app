@@ -32,6 +32,16 @@ export const TRY = [
   ],
 ] as const;
 
+/** Home's examples (prototype homeScreen): the third one is about a feature. */
+export const HOME_TRY = [
+  TRY[0],
+  TRY[1],
+  [
+    "Launch a feature to customers",
+    "Launch the partner leaderboard to customers by end of month, with docs and an announcement",
+  ],
+] as const;
+
 const PHASES = [
   "Reading your outcome",
   "Matching your org’s components",
@@ -300,7 +310,7 @@ export function NewCapsuleFlow({
             <button
               type="button"
               onClick={() => setStep({ kind: "scratch", outcome: step.error ? prompt.trim() : "" })}
-              className="font-medium text-foreground underline-offset-2 hover:underline"
+              className="font-medium text-foreground underline underline-offset-[3px]"
             >
               Fill in the fields
             </button>
@@ -321,6 +331,8 @@ export function Composer({
   error,
   large,
   label = "Describe the outcome",
+  heading,
+  tries = TRY,
 }: {
   ref?: React.Ref<HTMLDivElement>;
   value: string;
@@ -330,6 +342,9 @@ export function Composer({
   error?: string;
   large?: boolean;
   label?: string;
+  /** A visible label inside the box, like Home's "Start a capsule". */
+  heading?: string;
+  tries?: readonly (readonly [string, string])[];
 }) {
   return (
     <div
@@ -339,10 +354,17 @@ export function Composer({
         large ? "pt-[18px] pr-4 pb-3 pl-5" : "pt-3.5 pr-3 pb-3 pl-4",
       )}
     >
-      <div className="flex items-end gap-3">
-        <label htmlFor="prompt" className="sr-only">
-          {label}
+      {heading && (
+        <label htmlFor="prompt" className="-mb-1.5 text-[13px] font-medium text-foreground">
+          {heading}
         </label>
+      )}
+      <div className="flex items-end gap-3">
+        {!heading && (
+          <label htmlFor="prompt" className="sr-only">
+            {label}
+          </label>
+        )}
         <textarea
           id="prompt"
           rows={large ? 3 : 2}
@@ -374,9 +396,9 @@ export function Composer({
           {error}
         </p>
       )}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5 border-t border-divider pt-3">
         <span className="mr-0.5 text-[13px] text-muted-foreground">Try</span>
-        {TRY.map(([chip, text]) => (
+        {tries.map(([chip, text]) => (
           <button
             key={chip}
             type="button"

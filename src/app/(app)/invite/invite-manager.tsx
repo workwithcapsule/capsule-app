@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { FieldError, Input } from "@/components/ui/input";
+import { fmtDate } from "@/lib/dates";
 import { parseInvites } from "@/lib/validation";
 import { addInvitations, removeInvitation, resendInvitation, sendInvitations } from "./actions";
 
@@ -13,8 +14,7 @@ export type InvitationRow = {
   acceptedAt: string | null;
 };
 
-const fmt = (iso: string) =>
-  new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(iso));
+const fmt = (iso: string) => fmtDate(iso.slice(0, 10));
 
 function status(r: InvitationRow) {
   if (r.acceptedAt) return `Joined ${fmt(r.acceptedAt)}`;

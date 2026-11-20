@@ -9,7 +9,7 @@ import { useToast } from "@/components/toaster";
 import { Button } from "@/components/ui/button";
 import { attentionHref, attentionKey, type AttentionRow } from "@/lib/attention";
 import type { PersonRef } from "@/lib/capsule-types";
-import { daysUntil, fmtDate, fmtRelative } from "@/lib/dates";
+import { daysUntil, fmtDate, fmtSince } from "@/lib/dates";
 import { COMPONENT_COLOR_CLASSES } from "@/lib/design";
 import { cn } from "@/lib/utils";
 
@@ -131,7 +131,7 @@ export function AttentionList({
                   className="hidden w-16 flex-none text-right text-xs text-muted-foreground laptop:block"
                   suppressHydrationWarning
                 >
-                  {fmtRelative(r.since)}
+                  {fmtSince(r.since)}
                 </span>
                 <button
                   type="button"
@@ -202,7 +202,12 @@ function Due({ date }: { date: string }) {
 
 function Context({ r, variant }: { r: AttentionRow; variant: string }) {
   const dot = <span aria-hidden="true">·</span>;
-  const key = variant === "home" && <span className="font-mono">{r.capsuleKey}</span>;
+  // On Home, which capsule it's on (prototype: "Partner leaderboard launch · …").
+  const key = variant === "home" && (
+    <span className="truncate font-medium text-foreground/80" title={r.capsuleKey}>
+      {r.capsuleName}
+    </span>
+  );
   if (r.kind === "mention") {
     return (
       <>
@@ -226,6 +231,7 @@ function Context({ r, variant }: { r: AttentionRow; variant: string }) {
         </span>
       )}
       {key}
+      {key && dot}
       <span>
         {r.kind === "item"
           ? "Assigned to you"

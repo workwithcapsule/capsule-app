@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarBlank, Plus, User, X } from "@phosphor-icons/react";
+import { CalendarBlank, CaretDown, Plus, User, X } from "@phosphor-icons/react";
 import { Avatar } from "@/components/avatar";
 import { ComponentIcon } from "@/components/component-icon";
 import { DateField, PersonPicker } from "@/components/pickers";
@@ -99,6 +99,8 @@ export function NewCapsuleForm({
       itemDraft: "",
     })),
   );
+  // Components whose work items and collaborators are showing (rows start closed).
+  const [open, setOpen] = useState<Set<string>>(() => new Set());
   const [tried, setTried] = useState(false);
   const [error, setError] = useState("");
   const [leaveTo, setLeaveTo] = useState<string | null>(null);
@@ -305,6 +307,11 @@ export function NewCapsuleForm({
                 </option>
               ))}
             </NativeSelect>
+            {review && initial?.spaceId && initial.spaceId === spaceId && (
+              <span className="text-xs text-muted-foreground">
+                Suggested from your description.
+              </span>
+            )}
             <FieldError>{tried ? spaceError : ""}</FieldError>
           </div>
           <div className="flex flex-col gap-1.5">
@@ -359,65 +366,119 @@ export function NewCapsuleForm({
       <section aria-labelledby="f-comps" className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <h2 id="f-comps" className="text-base leading-6 font-semibold">
-            Components
+            Components{" "}
+            {components.length > 0 && (
+              <span className="font-normal text-muted-foreground">{components.length}</span>
+            )}
           </h2>
-          <p className="text-[13px] text-muted-foreground">
-            The parts of the work, one per team. Add an owner and a date for each if you know them.
-          </p>
+          {!review && (
+            <p className="text-[13px] text-muted-foreground">
+              The parts of the work, one per team. Add an owner and a date for each if you know
+              them.
+            </p>
+          )}
         </div>
         {components.length > 0 && (
-          <ul className="flex flex-col gap-3">
+          // One card of compact rows (prototype review page): icon, name, "N work
+          // items ⌄" to open the work items and collaborators, the goal, then
+          // owner, date and remove. Orbit's beads morph into these rows.
+          <ul className="rounded-2xl border border-border bg-surface shadow-card">
             {components.map((c) => {
               const t = typeById.get(c.typeId)!;
               const order = suggestedOrder.get(c.typeId);
               const hidden = review && order !== undefined ? order >= review.revealed : false;
               const thinking = review && order !== undefined ? order >= review.resolved : false;
+              const isOpen = open.has(c.typeId);
+              const toggle = () =>
+                setOpen((s) => {
+                  const n = new Set(s);
+                  if (n.has(c.typeId)) n.delete(c.typeId);
+                  else n.add(c.typeId);
+                  return n;
+                });
               return (
                 <li
                   key={c.typeId}
                   data-shape-index={order}
                   aria-hidden={hidden || undefined}
                   className={cn(
-                    "flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-card transition-opacity duration-300 motion-reduce:transition-none",
+                    "flex flex-col gap-3 border-t border-divider px-4 py-3.5 transition-opacity duration-300 first:border-t-0 motion-reduce:transition-none",
                     hidden && "opacity-0",
                   )}
                 >
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                    <span className="flex min-w-0 flex-1 items-center gap-2">
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          "flex size-6 flex-none items-center justify-center rounded-md",
-                          COMPONENT_COLOR_CLASSES[t.color].tag,
-                        )}
-                      >
-                        <ComponentIcon icon={t.icon} size={14} />
-                      </span>
-                      <span className="font-semibold">{t.name}</span>
-                    </span>
+                  <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
                     <span
-                      className="flex items-center gap-1.5 text-muted-foreground"
-                      title="Component owner"
+                      aria-hidden="true"
+                      className={cn(
+                        "mt-0.5 flex size-7 flex-none items-center justify-center rounded-lg",
+                        COMPONENT_COLOR_CLASSES[t.color].tag,
+                      )}
                     >
-                      <User size={14} aria-hidden="true" />
+                      <ComponentIcon icon={t.icon} size={14} />
+                    </span>
+                    <span className="flex min-w-0 flex-[1_1_220px] flex-col gap-1">
+                      <span className="flex flex-wrap items-center gap-x-1.5 text-sm">
+                        <span className="font-semibold">{t.name}</span>
+                        <span aria-hidden="true" className="text-muted-foreground">
+                          ·
+                        </span>
+                        <button
+                          type="button"
+                          aria-expanded={isOpen}
+                          aria-controls={`comp-${c.typeId}`}
+                          onClick={toggle}
+                          className="inline-flex items-center gap-1 rounded-md text-[13px] text-muted-foreground hover:text-foreground"
+                        >
+                          {c.items.length
+                            ? `${c.items.length} work item${c.items.length === 1 ? "" : "s"}`
+                            : "Add work items"}
+                          <CaretDown
+                            size={10}
+                            aria-hidden="true"
+                            className={cn(
+                              "transition-transform motion-reduce:transition-none",
+                              isOpen && "rotate-180",
+                            )}
+                          />
+                        </button>
+                      </span>
+                      <input
+                        maxLength={200}
+                        placeholder={`What does done look like for ${t.name}?`}
+                        aria-label={`Goal for ${t.name}`}
+                        value={c.goal}
+                        onChange={(e) => update(c.typeId, { goal: e.target.value })}
+                        className="-mx-1.5 rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-[13px] leading-[18px] text-muted-foreground outline-none placeholder:text-faint hover:border-border focus:border-control focus:text-foreground focus-visible:outline-none"
+                      />
+                    </span>
+                    <span className="flex flex-none items-center gap-2" title="Component owner">
+                      <User size={14} className="text-muted-foreground" aria-hidden="true" />
                       {thinking ? (
                         <ThinkChip label={`Choosing an owner for ${t.name}`} />
                       ) : (
-                        <PersonPicker
-                          value={c.ownerId}
-                          people={people}
-                          meId={me.id}
-                          emptyLabel="No owner"
-                          label={`Owner of ${t.name}`}
-                          onPick={(ownerId) => update(c.typeId, { ownerId })}
-                        />
+                        <span className="flex h-8 w-[156px] items-center rounded-[10px] border border-border bg-surface px-2">
+                          <PersonPicker
+                            value={c.ownerId}
+                            people={people}
+                            meId={me.id}
+                            emptyLabel="No owner"
+                            caret
+                            label={`Owner of ${t.name}`}
+                            onPick={(ownerId) => update(c.typeId, { ownerId })}
+                            className="w-full"
+                          />
+                        </span>
                       )}
                     </span>
                     <span
-                      className="flex items-center gap-1.5 text-muted-foreground"
+                      className="flex h-8 flex-none items-center gap-1.5 rounded-[10px] border border-border bg-surface px-2.5 text-[13px]"
                       title="Due date"
                     >
-                      <CalendarBlank size={14} aria-hidden="true" />
+                      <CalendarBlank
+                        size={14}
+                        className="text-muted-foreground"
+                        aria-hidden="true"
+                      />
                       {thinking ? (
                         <ThinkChip label={`Choosing a date for ${t.name}`} />
                       ) : (
@@ -437,115 +498,112 @@ export function NewCapsuleForm({
                       <X size={14} />
                     </Button>
                   </div>
-                  <Input
-                    size="sm"
-                    className="w-full"
-                    maxLength={200}
-                    placeholder={`Goal: what does done look like for ${t.name}?`}
-                    aria-label={`Goal for ${t.name}`}
-                    value={c.goal}
-                    onChange={(e) => update(c.typeId, { goal: e.target.value })}
-                  />
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-xs text-muted-foreground">Collaborators</span>
-                    {c.collaborators.map((id) => {
-                      const p = people.find((x) => x.id === id);
-                      return p ? (
-                        <span
-                          key={id}
-                          className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-bg pr-1 pl-1.5 text-xs"
-                        >
-                          <Avatar name={p.name} initials={p.initials} />
-                          {p.name}
-                          <button
-                            type="button"
-                            aria-label={`Remove ${p.name}`}
-                            onClick={() =>
-                              update(c.typeId, {
-                                collaborators: c.collaborators.filter((x) => x !== id),
-                              })
-                            }
-                            className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-subtle"
-                          >
-                            <X size={10} />
-                          </button>
-                        </span>
-                      ) : null;
-                    })}
-                    <PersonPicker
-                      value={null}
-                      people={people.filter(
-                        (p) => p.id !== c.ownerId && !c.collaborators.includes(p.id),
+                  {isOpen && (
+                    <div id={`comp-${c.typeId}`} className="flex flex-col gap-3 pl-10">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground">Collaborators</span>
+                        {c.collaborators.map((id) => {
+                          const p = people.find((x) => x.id === id);
+                          return p ? (
+                            <span
+                              key={id}
+                              className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-bg pr-1 pl-1.5 text-xs"
+                            >
+                              <Avatar name={p.name} initials={p.initials} />
+                              {p.name}
+                              <button
+                                type="button"
+                                aria-label={`Remove ${p.name}`}
+                                onClick={() =>
+                                  update(c.typeId, {
+                                    collaborators: c.collaborators.filter((x) => x !== id),
+                                  })
+                                }
+                                className="inline-flex size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-subtle"
+                              >
+                                <X size={10} />
+                              </button>
+                            </span>
+                          ) : null;
+                        })}
+                        <PersonPicker
+                          value={null}
+                          people={people.filter(
+                            (p) => p.id !== c.ownerId && !c.collaborators.includes(p.id),
+                          )}
+                          meId={me.id}
+                          emptyLabel="Add"
+                          label={`Add a collaborator to ${t.name}`}
+                          onPick={(id) =>
+                            id && update(c.typeId, { collaborators: [...c.collaborators, id] })
+                          }
+                          className="text-xs"
+                        />
+                      </div>
+                      {c.items.length > 0 && (
+                        <ul className="border-t border-divider">
+                          {c.items.map((i) => (
+                            <li
+                              key={i.key}
+                              className="flex min-h-10 items-center gap-3 border-b border-divider"
+                            >
+                              <span className="min-w-0 flex-1 truncate text-sm">{i.title}</span>
+                              <PersonPicker
+                                value={i.assigneeId}
+                                people={people}
+                                meId={me.id}
+                                emptyLabel="Unassigned"
+                                label={`Assignee for ${i.title}`}
+                                onPick={(assigneeId) =>
+                                  update(c.typeId, {
+                                    items: c.items.map((x) =>
+                                      x.key === i.key ? { ...x, assigneeId } : x,
+                                    ),
+                                  })
+                                }
+                                className="font-normal text-muted-foreground"
+                              />
+                              <button
+                                type="button"
+                                aria-label={`Remove ${i.title}`}
+                                onClick={() =>
+                                  update(c.typeId, {
+                                    items: c.items.filter((x) => x.key !== i.key),
+                                  })
+                                }
+                                className="inline-flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-subtle"
+                              >
+                                <X size={12} />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
                       )}
-                      meId={me.id}
-                      emptyLabel="Add"
-                      label={`Add a collaborator to ${t.name}`}
-                      onPick={(id) =>
-                        id && update(c.typeId, { collaborators: [...c.collaborators, id] })
-                      }
-                      className="text-xs"
-                    />
-                  </div>
-                  {c.items.length > 0 && (
-                    <ul className="border-t border-divider">
-                      {c.items.map((i) => (
-                        <li
-                          key={i.key}
-                          className="flex min-h-10 items-center gap-3 border-b border-divider"
-                        >
-                          <span className="min-w-0 flex-1 truncate text-sm">{i.title}</span>
-                          <PersonPicker
-                            value={i.assigneeId}
-                            people={people}
-                            meId={me.id}
-                            emptyLabel="Unassigned"
-                            label={`Assignee for ${i.title}`}
-                            onPick={(assigneeId) =>
+                      <div className="flex h-9 items-center gap-1.5 rounded-xl border border-dashed border-border pr-1.5 pl-2.5 text-muted-foreground focus-within:border-solid focus-within:border-control">
+                        <Plus size={14} aria-hidden="true" />
+                        <input
+                          aria-label={`Add a work item to ${t.name}`}
+                          placeholder="Add a work item"
+                          maxLength={500}
+                          value={c.itemDraft}
+                          onChange={(e) => update(c.typeId, { itemDraft: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && c.itemDraft.trim()) {
+                              e.preventDefault();
                               update(c.typeId, {
-                                items: c.items.map((x) =>
-                                  x.key === i.key ? { ...x, assigneeId } : x,
-                                ),
-                              })
+                                items: [
+                                  ...c.items,
+                                  { key: nextKey(), title: c.itemDraft.trim(), assigneeId: null },
+                                ],
+                                itemDraft: "",
+                              });
                             }
-                            className="font-normal text-muted-foreground"
-                          />
-                          <button
-                            type="button"
-                            aria-label={`Remove ${i.title}`}
-                            onClick={() =>
-                              update(c.typeId, { items: c.items.filter((x) => x.key !== i.key) })
-                            }
-                            className="inline-flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-subtle"
-                          >
-                            <X size={12} />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                          }}
+                          className="h-full min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-faint focus-visible:outline-none"
+                        />
+                      </div>
+                    </div>
                   )}
-                  <div className="flex h-9 items-center gap-1.5 rounded-xl border border-dashed border-border pr-1.5 pl-2.5 text-muted-foreground focus-within:border-solid focus-within:border-control">
-                    <Plus size={14} aria-hidden="true" />
-                    <input
-                      aria-label={`Add a work item to ${t.name}`}
-                      placeholder="Add a work item"
-                      maxLength={500}
-                      value={c.itemDraft}
-                      onChange={(e) => update(c.typeId, { itemDraft: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && c.itemDraft.trim()) {
-                          e.preventDefault();
-                          update(c.typeId, {
-                            items: [
-                              ...c.items,
-                              { key: nextKey(), title: c.itemDraft.trim(), assigneeId: null },
-                            ],
-                            itemDraft: "",
-                          });
-                        }
-                      }}
-                      className="h-full min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-faint focus-visible:outline-none"
-                    />
-                  </div>
                 </li>
               );
             })}
@@ -557,7 +615,8 @@ export function NewCapsuleForm({
               <button
                 key={t.id}
                 type="button"
-                onClick={() =>
+                onClick={() => {
+                  setOpen((s) => new Set(s).add(t.id));
                   setComponents((l) => [
                     ...l,
                     {
@@ -569,8 +628,8 @@ export function NewCapsuleForm({
                       items: [],
                       itemDraft: "",
                     },
-                  ])
-                }
+                  ]);
+                }}
                 className="inline-flex h-[30px] items-center gap-1.5 rounded-full border border-border bg-bg px-3 text-[13px] hover:bg-subtle"
               >
                 <span

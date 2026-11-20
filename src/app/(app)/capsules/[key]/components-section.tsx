@@ -71,11 +71,12 @@ export function orderComponents(view: CapsuleData) {
   const sort = (a: CapsuleComponent, b: CapsuleComponent) =>
     RANK[a.status] - RANK[b.status] || (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999");
   const mine = view.components.filter(involved).sort(sort);
-  // People not on the team see components by risk: blocked first, then the
-  // ones due soonest (overdue included), Done last (design-decisions.md section 4).
+  // People not on the team see components by risk: blocked, then in review
+  // (prototype: "Blocked and in review first"), then the ones due soonest
+  // (overdue included), Done last (design-decisions.md section 4).
   const risk = (a: CapsuleComponent, b: CapsuleComponent) => {
     const tier = (k: CapsuleComponent) =>
-      k.status === "blocked" ? 0 : k.status === "done" ? 2 : 1;
+      k.status === "blocked" ? 0 : k.status === "in_review" ? 1 : k.status === "done" ? 3 : 2;
     return (
       tier(a) - tier(b) || (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999") || sort(a, b)
     );
@@ -158,6 +159,9 @@ export function ComponentsSection({
         <h2 id="comps-h" className="text-base leading-6 font-semibold">
           Components
         </h2>
+        {!perms.onTeam && (
+          <span className="text-[13px] text-muted-foreground">Blocked and in review first</span>
+        )}
         {perms.isOwner &&
           (editing ? (
             <span className="flex items-center gap-2.5">
@@ -569,6 +573,7 @@ function ComponentPanel({
               people={view.people}
               meId={view.me.id}
               emptyLabel="No owner"
+              caret
               label={`Owner of ${k.name}`}
               onPick={(ownerId) =>
                 setComponent(

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarBlank, CaretRight, LinkSimple } from "@phosphor-icons/react";
+import { CalendarBlank, CaretRight, Eye, LinkSimple } from "@phosphor-icons/react";
 import { Avatar } from "@/components/avatar";
 import { EditableText } from "@/components/editable-text";
 import { DateField, PersonPicker, StatusPicker } from "@/components/pickers";
@@ -64,6 +64,12 @@ export function CapsuleHeader({
           <CaretRight size={12} aria-hidden="true" />
           <span className="font-mono text-xs">{c.key}</span>
         </nav>
+        {!perms.onTeam && view.followers.some((f) => f.userId === view.me.id) && (
+          <span className="inline-flex h-6 items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 text-xs text-muted-foreground">
+            <Eye size={13} aria-hidden="true" />
+            You follow this capsule
+          </span>
+        )}
       </div>
 
       <div className="flex flex-wrap items-start gap-4">
@@ -185,7 +191,7 @@ export function CapsuleHeader({
             ) : owner ? (
               <>
                 <Avatar name={owner.name} initials={owner.initials} />
-                {owner.name}
+                {owner.id === view.me.id ? "You" : owner.name}
               </>
             ) : (
               <span className="text-faint">No owner</span>

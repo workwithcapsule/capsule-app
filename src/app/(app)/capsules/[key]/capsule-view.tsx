@@ -38,23 +38,25 @@ export function CapsuleView({ initial }: { initial: CapsuleData }) {
   return (
     <div className="mx-auto flex max-w-[1160px] flex-col gap-6 px-4 pt-6 pb-[120px] laptop:px-8">
       <CapsuleHeader view={view} perms={perms} change={change} />
-      {perms.onTeam && view.needsMe.length > 0 && (
-        <section aria-labelledby="nyh-h" className="flex flex-col gap-3">
-          <h2 id="nyh-h" className="text-base leading-6 font-semibold">
-            Needs you here{" "}
-            <span className="font-normal text-muted-foreground">{view.needsMe.length}</span>
-          </h2>
-          <AttentionList
-            rows={view.needsMe}
-            orgId={view.capsule.orgId}
-            people={view.people}
-            variant="capsule"
-          />
-        </section>
-      )}
+      {/* Two columns from the top, as in the prototype: Needs you here and the
+          capsule's sections on the left, Team and Activity on the right. */}
       <div className="flex flex-wrap items-start gap-6">
         {perms.onTeam ? (
           <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-6">
+            {perms.onTeam && view.needsMe.length > 0 && (
+              <section aria-labelledby="nyh-h" className="flex flex-col gap-3">
+                <h2 id="nyh-h" className="text-base leading-6 font-semibold">
+                  Needs you here{" "}
+                  <span className="font-normal text-muted-foreground">{view.needsMe.length}</span>
+                </h2>
+                <AttentionList
+                  rows={view.needsMe}
+                  orgId={view.capsule.orgId}
+                  people={view.people}
+                  variant="capsule"
+                />
+              </section>
+            )}
             <Overview view={view} />
             <ComponentsSection view={view} perms={perms} change={change} focus={focus} />
             <AttachmentsSection view={view} perms={perms} change={change} />

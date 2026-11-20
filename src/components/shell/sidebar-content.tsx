@@ -99,6 +99,7 @@ export function SidebarContent({
         </Link>
         <button
           type="button"
+          data-search-anchor
           title="Search"
           aria-label="Search"
           onClick={() => {
