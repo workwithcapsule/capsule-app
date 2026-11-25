@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/
 import { FieldError, Input, Label } from "@/components/ui/input";
 import { prefixError, suggestPrefix } from "@/lib/validation";
 import { createSpace } from "./actions";
+import { track } from "@/lib/analytics";
 
 /** Anyone in the org can create a public space. They join it as its manager. */
 export function NewSpaceDialog({ takenPrefixes }: { takenPrefixes: string[] }) {
@@ -47,6 +48,7 @@ export function NewSpaceDialog({ takenPrefixes }: { takenPrefixes: string[] }) {
     start(async () => {
       const r = await createSpace({ name, prefix: shownPrefix, description });
       if (!r.ok) return setError(r.error);
+      track("space_created", { has_description: Boolean(description.trim()) });
       setOpen(false);
       toast(`Created ${name.trim()}. It’s in Your spaces now.`);
       router.push(`/spaces/${r.keyPrefix!.toLowerCase()}`);

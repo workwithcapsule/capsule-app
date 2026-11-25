@@ -6,6 +6,7 @@ import { FieldError, Input } from "@/components/ui/input";
 import { fmtDate } from "@/lib/dates";
 import { parseInvites } from "@/lib/validation";
 import { addInvitations, removeInvitation, resendInvitation, sendInvitations } from "./actions";
+import { track } from "@/lib/analytics";
 
 export type InvitationRow = {
   id: string;
@@ -47,8 +48,10 @@ export function InviteManager({
     setError("");
     start(async () => {
       const r = await addInvitations(orgId, check.emails);
-      if (r.ok) setDraft("");
-      else setError(r.error);
+      if (r.ok) {
+        track("invitees_added", { invitee_count: check.emails.length });
+        setDraft("");
+      } else setError(r.error);
     });
   }
 
@@ -59,6 +62,12 @@ export function InviteManager({
       const r = only ? await resendInvitation(orgId, only) : await sendInvitations(orgId);
       if (!r.ok) return setError(r.error);
       const s = r.summary!;
+      track("invitations_sent", {
+        send_type: only ? "resend" : "batch",
+        sent_count: s.sent.length,
+        held_count: s.held.length,
+        failed_count: s.failed.length,
+      });
       const parts = [];
       if (s.sent.length)
         parts.push(
