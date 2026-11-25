@@ -966,6 +966,57 @@ const groups: Group[] = [
     ],
   },
   {
+    title: "Home: Your capsules and Capsules you follow",
+    cases: [
+      {
+        who: "bob",
+        tries: "see who owns each component of EN-1, which he follows (warnings and team faces)",
+        expect: "allowed",
+        run: async (db) => {
+          const owners = await value<string>(
+            db,
+            `select string_agg(coalesce(owner_id::text, 'none'), ',' order by position, id)
+             from public.components where capsule_id = $1`,
+            [CAPSULE.en1],
+          );
+          return check(
+            (owners ?? "").includes("none") && (owners ?? "").includes(P.dana),
+            `${owners}`,
+          );
+        },
+      },
+      {
+        who: "bob",
+        tries: "see the people on EN-1's components",
+        expect: "allowed",
+        run: async (db) => {
+          await signIn(db, "dana");
+          await db.query(
+            `insert into public.component_people (org_id, capsule_id, component_id, user_id)
+             values ($1, $2, $3, $4) on conflict do nothing`,
+            [ORG.acme, CAPSULE.en1, COMP.en1Tech, P.jon],
+          );
+          await signIn(db, "bob");
+          return read(
+            `select 1 from public.component_people where capsule_id = $1 and user_id = $2`,
+            [CAPSULE.en1, P.jon],
+          )(db);
+        },
+      },
+      {
+        who: "olga",
+        tries: "see Acme's components, the people on them, or who follows what",
+        expect: "blocked",
+        run: read(
+          `select 1 from public.components where org_id = $1
+           union all select 1 from public.component_people where org_id = $1
+           union all select 1 from public.followers where org_id = $1`,
+          [ORG.acme],
+        ),
+      },
+    ],
+  },
+  {
     title: "AI shaping requests",
     cases: [
       {

@@ -25,7 +25,10 @@ const SEARCH =
   "Search: press ⌘K (Ctrl+K) and type “EX-1”, “ex 3” or a word like “portal”. EX-4 shows “Can view” because you’re not on it.";
 
 const HOME =
-  "Home: your Needs your attention gets an overdue item (EX-2), a due-soon item (EX-1), a component with no owner (EX-1), components you own, two @mentions and your part of Jon’s runbook (EX-1). Activity today fills from all four.";
+  "Home: your Needs your attention gets an overdue item (EX-2), a due-soon item (EX-1), a component with no owner (EX-1), components you own, two @mentions and your part of Jon’s runbook (EX-1). Activity today fills from all of them. On the right, Your capsules lists your open capsules with filters: EX-1 warns that a component is blocked, EX-2 that one has no owner, and EX-5 is tagged New.";
+
+const FOLLOWER_HOME =
+  "Home for someone who only follows capsules (an exec, say): “Capsules you follow” at the top with “1 at risk · 1 launch this week”, a card for EX-3 and EX-5, then Activity before Needs your attention.";
 
 const ROLES: Record<string, string> = {
   "EX-1":
@@ -34,6 +37,8 @@ const ROLES: Record<string, string> = {
   "EX-3":
     "You follow it: the follower view, its filtered Activity, “+1 this week” and a read-only attachment.",
   "EX-4": "You can see it but aren’t on it: the + Follow button.",
+  "EX-5":
+    "You follow it: new (Dana created it yesterday), on track and launching this week. Shows in Capsules you follow.",
 };
 
 export function ExamplesPanel({ status }: { status: Status }) {
@@ -175,6 +180,12 @@ export function ExamplesPanel({ status }: { status: Status }) {
             The examples
           </h2>
           <p className="text-[13px] text-muted-foreground">{HOME}</p>
+          <p className="text-[13px] text-muted-foreground">
+            {FOLLOWER_HOME}{" "}
+            <Link href="/?preview=follower" className="font-medium">
+              Preview a follower’s Home
+            </Link>
+          </p>
           <p className="text-[13px] text-muted-foreground">{EMAILS}</p>
           <p className="text-[13px] text-muted-foreground">{SEARCH}</p>
           <ul className="rounded-2xl border border-border bg-surface shadow-card">
