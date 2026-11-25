@@ -6,7 +6,8 @@ import posthog from "posthog-js";
  * - Sentry (NEXT_PUBLIC_SENTRY_DSN): errors people hit.
  * - PostHog (NEXT_PUBLIC_POSTHOG_KEY): page views, session replays (with
  *   everything typed hidden) and feature flags. Signed-in people are
- *   identified in components/monitoring.tsx.
+ *   identified in components/monitoring.tsx. Product events are in
+ *   lib/analytics.ts, and crashes go to its error tracking too.
  */
 
 const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
@@ -26,6 +27,12 @@ if (posthogKey) {
     defaults: "2025-05-24",
     person_profiles: "identified_only",
     session_recording: { maskAllInputs: true },
+    // Error tracking: crashes and failed promises (not console messages).
+    capture_exceptions: {
+      capture_unhandled_errors: true,
+      capture_unhandled_rejections: true,
+      capture_console_errors: false,
+    },
   });
 }
 

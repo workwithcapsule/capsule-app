@@ -43,6 +43,7 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { addAttachment, fileLink, removeAttachment, restoreAttachment } from "../actions";
 import type { useCapsule } from "./use-capsule";
+import { track } from "@/lib/analytics";
 
 type Change = ReturnType<typeof useCapsule>["change"];
 
@@ -152,15 +153,18 @@ export function AttachmentsSection({
     };
     change(
       { type: "addAttachment", attachment: temp },
-      () =>
-        addAttachment({
+      async () => {
+        const r = await addAttachment({
           orgId: view.capsule.orgId,
           capsuleId: view.capsule.id,
           kind: "link",
           name: check.name,
           url: check.url,
           linkType: check.linkType,
-        }),
+        });
+        if (r.ok) track("attachment_added", { attachment_type: check.linkType });
+        return r;
+      },
       {
         message: `Attached “${check.name}”.`,
         undo: (data) => ({
@@ -204,7 +208,7 @@ export function AttachmentsSection({
             .upload(path, f, { contentType: f.type || undefined, upsert: false });
           if (upErr)
             return { ok: false as const, error: `Couldn’t upload “${f.name}”. Try again.` };
-          return addAttachment({
+          const r = await addAttachment({
             orgId: view.capsule.orgId,
             capsuleId: view.capsule.id,
             kind: "file",
@@ -213,6 +217,8 @@ export function AttachmentsSection({
             sizeBytes: f.size,
             mimeType: f.type || null,
           });
+          if (r.ok) track("attachment_added", { attachment_type: fileKind(f.name) });
+          return r;
         },
         {
           message: `Attached “${f.name}”.`,

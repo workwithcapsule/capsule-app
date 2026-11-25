@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
+import { trackError } from "@/lib/analytics";
 
 /**
  * The last-resort error page, when even the app's layout fails. Reports the
@@ -11,6 +12,7 @@ import * as Sentry from "@sentry/nextjs";
 export default function GlobalError({ error }: { error: Error & { digest?: string } }) {
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_SENTRY_DSN) Sentry.captureException(error);
+    trackError(error);
   }, [error]);
   return (
     <html lang="en">

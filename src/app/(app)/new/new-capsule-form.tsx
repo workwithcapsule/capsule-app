@@ -18,6 +18,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import type { ShapedDraft } from "@/lib/ai/types";
 import { CaretLeft, Warning } from "@phosphor-icons/react";
 import { recordShapingOutcome } from "./actions";
+import { track } from "@/lib/analytics";
 
 /*
  * "Set up your capsule" (prototype New capsule, filling in the fields), and
@@ -210,6 +211,15 @@ export function NewCapsuleForm({
         setError(r.error);
         return;
       }
+      track("capsule_created", {
+        creation_source: review ? "ai_suggestion" : "manual",
+        component_count: components.length,
+        work_item_count: components.reduce(
+          (n, c) => n + c.items.length + (c.itemDraft.trim() ? 1 : 0),
+          0,
+        ),
+        has_target_date: Boolean(launchDate),
+      });
       setFinished(true);
       if (review) {
         void recordShapingOutcome(

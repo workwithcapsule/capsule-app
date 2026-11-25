@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { shape } from "./actions";
 import { NewCapsuleForm, type SpaceOption } from "./new-capsule-form";
 import { Orbit, type Bead } from "./orbit";
+import { track } from "@/lib/analytics";
 
 /*
  * New capsule (step 9): Describe → Orbit while Claude shapes it → Review.
@@ -111,6 +112,10 @@ export function NewCapsuleFlow({
     const id = ++run.current;
     const motion = !reducedMotion();
     const guess = guessComponents(text, types);
+    track("capsule_shaping_requested", {
+      prompt_length: text.length,
+      suggested_component_count: guess.length,
+    });
     const start = (guess.length ? guess : types.slice(0, 3)).slice(0, 4);
     setBeadsFromGuess(start.map((t) => ({ key: t.id, color: t.color, icon: t.icon })));
     setAnswer(null);

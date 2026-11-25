@@ -32,6 +32,7 @@ import {
 import { addPiece, removePiece, updatePiece, updateWorkItem } from "../actions";
 import { ActivityRow } from "./activity-section";
 import type { useCapsule } from "./use-capsule";
+import { track } from "@/lib/analytics";
 
 type Change = ReturnType<typeof useCapsule>["change"];
 
@@ -60,7 +61,11 @@ export function useItemActions(item: WorkItem, view: CapsuleData, change: Change
       const status: ItemStatus = next ? "done" : "not_started";
       change(
         { type: "item", id: item.id, patch: withStatus(before, status, hasPieces) },
-        () => updateWorkItem(item.id, { done: next }),
+        async () => {
+          const r = await updateWorkItem(item.id, { done: next });
+          if (r.ok) track("work_item_completion_changed", { completed: next });
+          return r;
+        },
         {
           message: next ? `Checked off “${item.title}”.` : `“${item.title}” is open again.`,
           undo: undoStatus(),

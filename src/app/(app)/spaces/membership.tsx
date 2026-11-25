@@ -6,6 +6,7 @@ import { useToast } from "@/components/toaster";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { joinSpace, leaveSpace } from "./actions";
+import { track } from "@/lib/analytics";
 
 export type MembershipState = {
   id: string;
@@ -39,6 +40,7 @@ export function useMembership(
         toast(r.error);
         return;
       }
+      track("space_membership_changed", { membership_action: join ? "joined" : "left" });
       if (!withUndo) return;
       const undo = () =>
         set({ ...space, joined: join, myRole: join ? role : null }, !join, previousRole, false);
